@@ -49,7 +49,7 @@ function render(){
  $("preview").textContent=questions[current]?.question||"Question preview";
  $("questionProgress").textContent=questions.length?Math.min(current+1,questions.length)+" / "+questions.length:"0 / 0";
  const secs=Number(quiz.settings?.questionSeconds||10),started=Number(quiz.questionStartedAt||0);
- $("adminTimer").textContent=quiz.status==="live"?Math.max(0,secs-Math.floor((Date.now()-started)/1000))+" sec":"—";
+ $("adminTimer").textContent=quiz.status==="live"?(Math.max(0,secs*1000-(Date.now()-started))/1000).toFixed(1)+" sec":"—";
  $("participants").textContent=players.length;
  $("players").innerHTML=players.map(p=>"<li>"+escapeHtml(p.name)+" — "+(p.score||0)+" points</li>").join("");
  $("questions").querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const i=Number(b.dataset.del);if(i<0||i>=questions.length)return;if(!confirm("यह प्रश्न हटाना है?"))return;questions.splice(i,1);$("deleteStatus").textContent="एक प्रश्न हटा दिया गया।";save()});
@@ -162,7 +162,58 @@ function openLiveScreen(){if(!quiz.id){alert("पहले Quiz Code generate �
 $("openLiveScreen").onclick=()=>openLiveScreen();
 $("start").onclick=()=>{const sec=Number($("questionSeconds").value),limit=Number($("questionLimit").value),delay=Number($("startDelay").value);if(!quiz.id){alert("पहले Quiz Code generate करके Save Quiz करें।");return}if(!questions.length){alert("पहले JSON से प्रश्न import करें या प्रश्न जोड़ें।");return}if(!Number.isFinite(sec)||sec<5||sec>600){alert("हर प्रश्न का समय 5 से 600 सेकंड के बीच रखें।");return}if(!Number.isInteger(limit)||limit<1){alert("Question limit कम से कम 1 होना चाहिए।");return}stopTimers();quiz.status="waiting";quiz.endAt=0;quiz.settings={...(quiz.settings||{}),questionSeconds:sec,questionLimit:limit,startDelay:delay};questions=shuffle([...questions]).slice(0,limit);current=0;players=read().players||[];beginLive();alert(delay>0?"Questions sync होने के बाद "+delay+" सेकंड का countdown Admin और Player दोनों पर चलेगा।":"Questions sync होने के बाद Quiz शुरू होगा।")};
 $("next").onclick=()=>{if(quiz.status!=="live")return;if(current<questions.length-1){current++;quiz.questionStartedAt=Date.now();publish()}else $("end").click()};
-$("end").onclick=()=>{stopTimers();quiz.status="completed";quiz.endAt=Date.now();publish()};
+$("end").onclick=async()=>{stopTimers();quiz.status="completed";quiz.endAt=Date.now();await persist();render();$("liveStatus").textContent="Quiz समाप्त हो गया है। Results तैयार हो रहे हैं…";await loadResults()};
+async function loadResults(){
+  const code=String(quiz.id||"").trim().toUpperCase();
+  if(!code)return;
+  const status=$("resultsStatus"),board=$("resultsBoard"),detail=$("resultDetail");
+  if(status)status.textContent="Results Firebase से लोड हो रहे हैं…";
+  if(board)board.innerHTML="";
+  if(detail)detail.innerHTML="";
+  try{
+    const [playerSnap,answerSnap,keySnap,questionSnap]=await Promise.all([
+      getDocs(collection(db,"quizzes",code,"players")),
+      getDocs(collection(db,"quizzes",code,"answers")),
+      getDocs(collection(db,"quizzes",code,"keys")),
+      getDocs(collection(db,"quizzes",code,"questions"))
+    ]);
+    const playerRows=playerSnap.docs.map(d=>({uid:d.id,...d.data()}));
+    const answers=answerSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const keys=new Map(keySnap.docs.map(d=>[d.id,Number(d.data().correctIndex)]));
+    const qs=new Map(questionSnap.docs.map(d=>[d.id,d.data()]));
+    const total=Number(quiz.count||questions.length||questionSnap.size);
+    const rows=playerRows.map(p=>{
+      const mine=answers.filter(a=>a.uid===p.uid);
+      const correct=mine.filter(a=>keys.get(String(a.q))===Number(a.sel)).length;
+      const elapsed=mine.reduce((sum,a)=>sum+Math.max(0,Number(a.elapsedMs||0)),0);
+      const times=mine.map(a=>a.at&&typeof a.at.toMillis==="function"?a.at.toMillis():0).filter(Boolean);
+      const completed=mine.length>=total;
+      const totalSolveMs=completed&&times.length?Math.max(0,Math.max(...times)-Number(quiz.startAt||0)):elapsed;
+      return {...p,mine,correct,answered:mine.length,elapsed,totalSolveMs,completed};
+    }).sort((a,b)=>b.correct-a.correct||(a.completed!==b.completed?(a.completed?-1:1):a.totalSolveMs-b.totalSolveMs)||String(a.name||"").localeCompare(String(b.name||"")));
+    if(status)status.textContent="कुल प्रतिभागी: "+rows.length+" • उत्तर जमा करने वाले: "+answers.length+" • कुल प्रश्न: "+total;
+    if(board)board.innerHTML=rows.length?rows.map((p,i)=>'<li class="result-row"><button type="button" class="result-name" data-result-uid="'+escapeHtml(p.uid)+'">#'+(i+1)+' '+escapeHtml(p.name||"नाम नहीं")+'</button> — सही: <b>'+p.correct+'</b>/'+total+' • जवाब: '+p.answered+'/'+total+' • समय: '+formatPrecise(p.totalSolveMs)+(p.completed?' • पूरा किया':' • अधूरा')+'</li>').join(""):"कोई प्रतिभागी नहीं मिला।";
+    board?.querySelectorAll("[data-result-uid]").forEach(btn=>btn.onclick=()=>{
+      const p=rows.find(x=>x.uid===btn.dataset.resultUid);
+      if(!p||!detail)return;
+      detail.innerHTML='<h3>'+escapeHtml(p.name||"Player")+' — उत्तर विवरण</h3><p>सही उत्तर: '+p.correct+'/'+total+' • जमा किए: '+p.answered+'/'+total+' • कुल समय: '+formatPrecise(p.totalSolveMs)+'</p><ol>'+Array.from({length:total},(_,i)=>{
+        const a=p.mine.find(x=>Number(x.q)===i),q=qs.get(String(i)),correct=keys.get(String(i));
+        const selected=a?Number(a.sel):-1;
+        const at=a&&a.at&&typeof a.at.toDate==="function"?a.at.toDate().toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"medium"}):"जवाब नहीं दिया";
+        const spent=a?formatPrecise(Number(a.elapsedMs||0)):"—";
+        const chosen=a?(q?.options?.[selected]??("Option "+String.fromCharCode(65+selected))):"उत्तर नहीं दिया";
+        const right=q?.options?.[correct]??(correct===undefined?"—":"Option "+String.fromCharCode(65+correct));
+        return '<li><b>Q'+(i+1)+':</b> '+escapeHtml(q?.question||"प्रश्न उपलब्ध नहीं")+'<br>चुना गया: '+escapeHtml(chosen)+'<br>सही उत्तर: '+escapeHtml(right)+'<br>परिणाम: '+(a?(selected===correct?'✅ सही':'❌ गलत'):'—')+'<br>जवाब जमा समय: '+escapeHtml(at)+'<br>इस प्रश्न पर समय: '+escapeHtml(spent)+'</li>';
+      }).join("")+'</ol>';
+      detail.scrollIntoView({behavior:"smooth",block:"start"});
+    });
+  }catch(e){
+    console.error("Results load failed",e);
+    if(status)status.textContent="Results नहीं लोड हुए: "+(e.message||"Firebase Rules जाँचें");
+  }
+}
+function formatPrecise(ms){return (Math.max(0,Number(ms)||0)/1000).toFixed(2)+" sec"}
+
 const s=read();if(s.quiz){quiz={...quiz,...s.quiz,settings:{questionSeconds:10,questionLimit:100,startDelay:0,...(s.quiz.settings||{})}};questions=s.questions||s.quiz.questions||[];players=s.players||[];$("quizCode").value=quiz.id||"";$("quizName").value=quiz.name||"";current=s.quiz.currentIndex||0;$("questionSeconds").value=quiz.settings.questionSeconds;$("questionLimit").value=quiz.settings.questionLimit;$("startDelay").value=String(quiz.settings.startDelay||0)}
 render();
 function updateLiveOnly(){const s=read();if(s.quiz?.id===quiz.id){players=s.players||[];if(s.quiz.status==="live"&&s.quiz.runId!==quiz.runId){quiz={...quiz,...s.quiz};questions=s.quiz.questions||[];current=s.quiz.currentIndex||0} $("liveStatus").textContent=quiz.status==="live"?"🟢 QUIZ LIVE — शुरू हो चुका है • प्रश्न "+Math.min(current+1,questions.length)+" / "+questions.length+" • चलने का समय "+formatElapsed(Date.now()-Number(quiz.startAt||Date.now())):quiz.status==="starting"?"⏳ Quiz "+Math.max(0,Math.ceil((Number(quiz.startAt||0)-Date.now())/1000))+" सेकंड में शुरू होगा…":quiz.status==="completed"?"Quiz समाप्त हो गया है।":"Quiz अभी शुरू नहीं हुआ है।";const secs=Number(quiz.settings?.questionSeconds||10),started=Number(quiz.questionStartedAt||0);$("adminTimer").textContent=quiz.status==="live"?Math.max(0,secs-Math.floor((Date.now()-started)/1000))+" sec":"—";$("participants").textContent=players.length;$("players").innerHTML=players.map(p=>"<li>"+escapeHtml(p.name)+" — "+(p.score||0)+" points</li>").join("")}}
