@@ -1,5 +1,11 @@
 import { auth, db } from "./firebase.js";
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+  setPersistence,
+  browserLocalPersistence
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const gate = document.getElementById("adminAuthGate");
@@ -22,11 +28,14 @@ function showGate(show) {
   if (gate) gate.style.display = show ? "grid" : "none";
   document.body.style.overflow = show ? "hidden" : "";
 }
+function adminDeniedError() {
+  const error = new Error("इस account को Admin permission नहीं मिली। Firestore में admins/{आपका UID} document और Boolean active=true जाँचें।");
+  error.code = "admin/not-authorized";
+  return error;
+}
 async function verifyAdmin(user) {
   const snap = await getDoc(doc(db, "admins", user.uid));
-  if (!snap.exists() || snap.data()?.active !== true) {
-    throw new Error("इस account को Admin permission नहीं मिली। Firestore में admins/" + user.uid + " document और Boolean active=true जाँचें।");
-  }
+  if (!snap.exists() || snap.data()?.active !== true) throw adminDeniedError();
 }
 
 async function handleAdminLogout(event) {
@@ -73,6 +82,8 @@ form?.addEventListener("submit", async (event) => {
   button.disabled = true;
   setMessage("Login और Admin permission जाँची जा रही है…");
   try {
+    // Explicitly save the Firebase session in this browser across refreshes.
+    await setPersistence(auth, browserLocalPersistence);
     const credential = await signInWithEmailAndPassword(auth, email.value.trim(), password.value);
     await verifyAdmin(credential.user);
     authorizedUid = credential.user.uid;
@@ -107,10 +118,16 @@ onAuthStateChanged(auth, async (user) => {
     showGate(false);
     setMessage("Admin session verified.");
   } catch (error) {
-    console.error("Admin authorization failed:", error);
+    console.error("Admin authorization check failed:", error);
     authorizedUid = null;
-    try { await signOut(auth); } catch (signOutError) { console.error(signOutError); }
     showGate(true);
-    setMessage(error?.message || "Admin permission नहीं मिली।", true);
+
+    if (error?.code === "admin/not-authorized") {
+      try { await signOut(auth); } catch (signOutError) { console.error(signOutError); }
+      setMessage(error.message, true);
+    } else {
+      // Do not erase a valid session just because Firestore/network was temporarily unavailable.
+      setMessage("Login session सेव है, लेकिन Admin permission verify नहीं हो पाई। Internet/Firestore Rules जाँचें और पेज refresh करें। विवरण: " + (error?.message || "Unknown error"), true);
+    }
   }
 });
