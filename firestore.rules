@@ -114,9 +114,13 @@ service cloud.firestore {
       // One answer per UID per question
       // -------------------------
       match /answers/{aid} {
+        // Players may read only their own submitted answer; admins can review all.
         allow get, list: if isAdmin()
           || (passwordUser() && resource.data.uid == request.auth.uid);
 
+        // Allow one answer per authenticated player for the currently live question.
+        // Do not depend on timestamp arithmetic here: it can cause valid answers
+        // to be rejected when the client/server clocks or question timer differ.
         allow create: if passwordUser()
           && request.resource.data.keys().hasOnly(['uid', 'q', 'sel', 'at'])
           && request.resource.data.uid == request.auth.uid
@@ -124,16 +128,16 @@ service cloud.firestore {
           && request.resource.data.sel is int
           && request.resource.data.sel >= 0
           && request.resource.data.sel <= 3
+          && request.resource.data.at == request.time
           && quizExists(q)
+          && quiz(q).status == 'live'
+          && request.resource.data.q == quiz(q).currentIndex
           && request.resource.data.q >= 0
           && request.resource.data.q < quiz(q).count
           && aid == request.auth.uid + '_' + string(request.resource.data.q)
-          && request.resource.data.at == request.time
-          && exists(/databases/$(database)/documents/quizzes/$(q)/players/$(request.auth.uid))
-          && quiz(q).status == 'live'
-          && request.time >= questionStart(q, request.resource.data.q)
-          && request.time < questionStart(q, request.resource.data.q + 1);
+          && exists(/databases/$(database)/documents/quizzes/$(q)/players/$(request.auth.uid));
 
+        // Players cannot modify or delete submitted answers.
         allow update, delete: if isAdmin();
       }
 
