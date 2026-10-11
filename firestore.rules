@@ -1,44 +1,153 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() { return request.auth != null; }
-    function isAdmin() {
+
+    // Email/password authentication is required for players and admins.
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function passwordUser() {
       return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'password';
+    }
+
+    function isAdmin() {
+      return passwordUser()
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
         && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true;
     }
-    function quizData(q) {
-      return get(/databases/$(database)/documents/quizzes/$(q)).data;
-    }
-    function questionOpensAt(q, i) {
-      return quizData(q).startedAt
-        + duration.value(quizData(q).lead + i * quizData(q).sec, 's');
+
+    function quizExists(q) {
+      return exists(/databases/$(database)/documents/quizzes/$(q));
     }
 
+    function quiz(q) {
+      return get(/databases/$(database)/documents/quizzes/$(q)).data;
+    }
+
+    function questionStart(q, i) {
+      return quiz(q).startedAt
+        + duration.value(quiz(q).lead + i * quiz(q).sec, 's');
+    }
+
+    // -------------------------
+    // Admin allowlist
+    // Create this document manually in Firebase Console:
+    // admins/{admin UID}, active: true (Boolean)
+    // -------------------------
     match /admins/{uid} {
-      allow get: if signedIn() && request.auth.uid == uid;
+      allow get: if passwordUser() && request.auth.uid == uid;
       allow list, create, update, delete: if false;
     }
 
+    // -------------------------
+    // Optional server-time ping
+    // -------------------------
+    match /pings/{uid} {
+      allow create, update: if passwordUser()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['t'])
+        && request.resource.data.t == request.time;
+
+      allow read, delete: if false;
+    }
+
+    // -------------------------
+    // Quiz metadata
+    // -------------------------
     match /quizzes/{q} {
-      // Quiz metadata is readable so players can validate a code and wait for start.
-      // Correct answers must NEVER be stored in this document.
+      // Public read of quiz metadata is needed for entering a quiz code
+      // and waiting for the host to start. Never store answer keys here.
       allow get: if true;
       allow list: if isAdmin();
       allow create, update, delete: if isAdmin();
 
+      // -------------------------
+      // Questions
+      // -------------------------
       match /questions/{i} {
-        allow read: if isAdmin() ||
-          (quizData(q).status == 'live'
-            && request.time >= questionOpensAt(q, int(i)));
+        allow get: if isAdmin()
+          || (
+            passwordUser()
+            && quizExists(q)
+            && quiz(q).status == 'live'
+            && request.time >= questionStart(q, int(i))
+          );
+
+        allow list: if isAdmin();
         allow create, update, delete: if isAdmin();
       }
 
+      // Answer keys are never readable by players.
       match /keys/{i} {
         allow read, write: if isAdmin();
       }
+
+      // -------------------------
+      // Players
+      // Duplicate display names are allowed.
+      // Each player document ID must equal their Firebase Auth UID.
+      // -------------------------
+      match /players/{uid} {
+        allow get: if isAdmin()
+          || (passwordUser() && request.auth.uid == uid);
+
+        allow list: if isAdmin();
+
+        allow create: if passwordUser()
+          && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['name', 'joinedAt'])
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 40
+          && request.resource.data.joinedAt == request.time
+          && quizExists(q)
+          && quiz(q).status in ['waiting', 'starting', 'live'];
+
+        // Players cannot change scores, names, or answer history from client.
+        allow update, delete: if isAdmin();
+      }
+
+      // -------------------------
+      // One answer per UID per question
+      // -------------------------
+      match /answers/{aid} {
+        allow get, list: if isAdmin()
+          || (passwordUser() && resource.data.uid == request.auth.uid);
+
+        allow create: if passwordUser()
+          && request.resource.data.keys().hasOnly(['uid', 'q', 'sel', 'at'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.q is int
+          && request.resource.data.sel is int
+          && request.resource.data.sel >= 0
+          && request.resource.data.sel <= 3
+          && quizExists(q)
+          && request.resource.data.q >= 0
+          && request.resource.data.q < quiz(q).count
+          && aid == request.auth.uid + '_' + string(request.resource.data.q)
+          && request.resource.data.at == request.time
+          && exists(/databases/$(database)/documents/quizzes/$(q)/players/$(request.auth.uid))
+          && quiz(q).status == 'live'
+          && request.time >= questionStart(q, request.resource.data.q)
+          && request.time < questionStart(q, request.resource.data.q + 1);
+
+        allow update, delete: if isAdmin();
+      }
+
+      // Each player can read only their own result; admins can read all.
+      match /results/{uid} {
+        allow get: if isAdmin()
+          || (passwordUser() && request.auth.uid == uid);
+
+        allow list: if isAdmin();
+        allow create, update, delete: if isAdmin();
+      }
     }
 
+    // Deny everything not explicitly allowed above.
     match /{document=**} {
       allow read, write: if false;
     }
