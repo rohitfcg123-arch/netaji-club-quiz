@@ -2,3 +2,6 @@
 .question-tools{margin:14px 0}.question-tools .row{justify-content:flex-start;margin:8px 0}.danger{background:#8c2026!important;color:#fff!important;border:0!important}.small-button{padding:6px 10px;font-size:14px;flex-shrink:0}.question-item{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #eadbb5}.question-select{display:flex;align-items:flex-start;gap:8px;flex:1;overflow-wrap:anywhere}.question-select input{width:20px;height:20px;flex:0 0 20px;margin-top:3px}#questionListDetails{border:1px solid #e4ce94;border-radius:14px;padding:12px 16px;background:#fffaf0}#questionListDetails summary{cursor:pointer;font-weight:800;color:#862127;padding:8px 0}#questionListDetails ol{padding-left:22px}button:disabled{opacity:.45;cursor:not-allowed}
 
 .category-filter-label{display:block;font-weight:750;margin:12px 0}.category-filter-label select{width:100%;padding:12px;border:1px solid #d9cba8;border-radius:12px;background:#edf2ff;font:inherit}.question-select span{overflow-wrap:anywhere}.question-tools .row button{min-width:130px}.question-item{align-items:center}
+
+/* Admin live preview uses the same question screen as the player portal. */
+body.host-mode .hero{display:none!important}body.host-mode #game{display:block}body.host-mode #feedback.hidden{display:none!important}
