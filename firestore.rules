@@ -122,13 +122,16 @@ service cloud.firestore {
         // Do not depend on timestamp arithmetic here: it can cause valid answers
         // to be rejected when the client/server clocks or question timer differ.
         allow create: if passwordUser()
-          && request.resource.data.keys().hasOnly(['uid', 'q', 'sel', 'at'])
+          && request.resource.data.keys().hasOnly(['uid', 'q', 'sel', 'at', 'elapsedMs'])
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.q is int
           && request.resource.data.sel is int
           && request.resource.data.sel >= 0
           && request.resource.data.sel <= 3
           && request.resource.data.at == request.time
+          && request.resource.data.elapsedMs is number
+          && request.resource.data.elapsedMs >= 0
+          && request.resource.data.elapsedMs <= 600000
           && quizExists(q)
           && quiz(q).status == 'live'
           && request.resource.data.q == quiz(q).currentIndex
