@@ -1,5 +1,5 @@
 import { db } from "./firebase.js";
-import { collection, deleteDoc, doc, getDocs, onSnapshot, serverTimestamp, setDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { collection, deleteDoc, doc, getDocs, onSnapshot, serverTimestamp, setDoc, Timestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 const $=id=>document.getElementById(id),KEY="netajiQuizLiveState";
 let questions=[],current=0,quiz={id:"",name:"Saraswati Puja Quiz",status:"waiting",settings:{pointsPerCorrect:10,questionSeconds:10,questionLimit:100,startDelay:0},questions:[]},players=[],autoTimer=null,countdownTimer=null;
 const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"{}")}catch{return {}}};
@@ -15,18 +15,21 @@ function persist(){
   return syncChain;
 }
 async function syncQuestionBank(){
-  if(!quiz.id)return;
+  if(!quiz.id) throw new Error("Quiz Code save नहीं है।");
   const code=String(quiz.id).trim().toUpperCase();
   await persist();
   const qs=collection(db,"quizzes",code,"questions");
   const existing=await getDocs(qs);
-  const wanted=new Set();
+  const wanted=new Set(questions.map((_,i)=>String(i)));
+  const batch=writeBatch(db);
   for(let i=0;i<questions.length;i++){
-    wanted.add(String(i));const q=questions[i];
-    await setDoc(doc(db,"quizzes",code,"questions",String(i)),{question:q.question,options:q.options,category:q.category||"Uncategorized"});
-    await setDoc(doc(db,"quizzes",code,"keys",String(i)),{correctIndex:Number(q.correctIndex)||0});
+    const q=questions[i];
+    batch.set(doc(db,"quizzes",code,"questions",String(i)),{question:q.question,options:q.options,category:q.category||"Uncategorized"});
+    batch.set(doc(db,"quizzes",code,"keys",String(i)),{correctIndex:Number(q.correctIndex)||0});
   }
-  await Promise.all(existing.docs.filter(d=>!wanted.has(d.id)).map(d=>deleteDoc(d.ref)));
+  for(const d of existing.docs){if(!wanted.has(d.id))batch.delete(d.ref)}
+  $("liveStatus").textContent="⏳ "+questions.length+" questions Firebase पर एक साथ sync हो रहे हैं…";
+  await batch.commit();
 }
 function save(){persist();render()}
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
