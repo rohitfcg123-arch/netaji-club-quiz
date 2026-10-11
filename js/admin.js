@@ -9,7 +9,8 @@ function currentCategory(){const custom=$("customImportCategory")?.value.trim();
 function selectedSingleCategory(){return $("customSingleCategory")?.value.trim()||$("singleCategory")?.value||"Uncategorized"}
 function visibleQuestionIndexes(){const filter=$("categoryFilter").value;return questions.map((q,i)=>({q,i})).filter(x=>filter==="__all"||(x.q.category||"Uncategorized")===filter).map(x=>x.i)}
 function refreshCategoryFilter(){const select=$("categoryFilter"),previous=select.value;const cats=[...new Set(questions.map(q=>q.category||"Uncategorized"))].sort((a,b)=>a.localeCompare(b));const signature="__all|"+questions.length+"|"+cats.map(c=>c+":"+questions.filter(q=>(q.category||"Uncategorized")===c).length).join("|");if(select.dataset.signature===signature)return;select.dataset.signature=signature;select.innerHTML="<option value='__all'>All Categories ("+questions.length+")</option>"+cats.map(c=>"<option value='"+escapeHtml(c)+"'>"+escapeHtml(c)+" ("+questions.filter(q=>(q.category||"Uncategorized")===c).length+")</option>").join("");select.value=cats.includes(previous)?previous:"__all"}
-function formatElapsed(ms){const t=Math.max(0,Math.floor(ms/1000));return String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0")}\nfunction render(){
+function formatElapsed(ms){const t=Math.max(0,Math.floor(ms/1000));return String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0")}
+function render(){
  refreshCategoryFilter();
  const visible=visibleQuestionIndexes();
  $("count").textContent=questions.length+" questions total • "+visible.length+" shown";
