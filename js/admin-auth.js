@@ -11,22 +11,38 @@ const message = document.getElementById("adminAuthMessage");
 const logoutButton = document.getElementById("adminLogout");
 let authorizedUid = null;
 
-logoutButton?.addEventListener("click", async () => {
+async function handleAdminLogout() {
+  if (!logoutButton) return;
   logoutButton.disabled = true;
+  logoutButton.textContent = "Logging out…";
   try {
-    authorizedUid = null;
     await signOut(auth);
+    authorizedUid = null;
     password.value = "";
     email.value = "";
-    setMessage("आप सुरक्षित रूप से Logout हो गए हैं।");
     showGate(true);
+    setMessage("आप सुरक्षित रूप से Logout हो गए हैं।");
   } catch (error) {
     console.error("Logout failed:", error);
-    setMessage("Logout नहीं हो पाया। दोबारा कोशिश करें।", true);
+    setMessage("Logout नहीं हो पाया: " + (error?.message || "दोबारा कोशिश करें।"), true);
   } finally {
     logoutButton.disabled = false;
+    logoutButton.textContent = "Logout";
   }
-});
+}
+if (logoutButton) {
+  logoutButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    void handleAdminLogout();
+  });
+  logoutButton.addEventListener("pointerup", (event) => {
+    if (event.pointerType === "touch") {
+      event.preventDefault();
+      void handleAdminLogout();
+    }
+  });
+}
 
 function setMessage(text, isError = false) {
   message.textContent = text;
