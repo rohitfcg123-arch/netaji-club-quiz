@@ -1,5 +1,5 @@
 const $=id=>document.getElementById(id),KEY="netajiQuizLiveState";
-const params=new URLSearchParams(location.search),hostMode=params.get("host")==="1",requestedCode=(params.get("code")||"").trim().toUpperCase();
+const params=new URLSearchParams(location.search),hostMode=params.get("host")==="1",requestedCode=(params.get("code")||"").trim().toUpperCase(),hostOpenedAt=Date.now();
 let player=null,lastToken="",score=0;
 const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"{}")}catch{return {}}};
 function notice(t){$("notice").textContent=t}
@@ -25,6 +25,10 @@ function showQuestion(s){
     clearOptions();
     $("timer").textContent=Math.max(0,Math.ceil((Number(quiz.startAt||0)-Date.now())/1000));
     $("feedback").textContent="";
+    return;
+  }
+  if(quiz.status==="completed"&&hostMode&&Number(quiz.endAt||0)<hostOpenedAt){
+    showWaiting("Quiz शुरू होने का इंतज़ार है…");
     return;
   }
   if(quiz.status==="completed"){
