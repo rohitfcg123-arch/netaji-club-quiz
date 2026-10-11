@@ -1,7 +1,35 @@
+import { db } from "./firebase.js";
+import { collection, deleteDoc, doc, getDocs, onSnapshot, serverTimestamp, setDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 const $=id=>document.getElementById(id),KEY="netajiQuizLiveState";
 let questions=[],current=0,quiz={id:"",name:"Saraswati Puja Quiz",status:"waiting",settings:{pointsPerCorrect:10,questionSeconds:10,questionLimit:100,startDelay:0},questions:[]},players=[],autoTimer=null,countdownTimer=null;
 const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"{}")}catch{return {}}};
-function persist(){const s=read();s.quiz={...quiz,questions,currentIndex:current};s.questions=questions;s.players=players;localStorage.setItem(KEY,JSON.stringify(s))}
+function persist(){
+  const s=read();s.quiz={...quiz,questions,currentIndex:current};s.questions=questions;s.players=players;
+  try { localStorage.setItem(KEY,JSON.stringify(s)); } catch(e) { console.warn("Local cache unavailable",e); }
+  if (!quiz.id) return;
+  const code=String(quiz.id).trim().toUpperCase();
+  const quizDoc={
+    id:code,name:quiz.name||"Quiz",status:quiz.status||"waiting",
+    settings:quiz.settings||{questionSeconds:10,questionLimit:100,startDelay:0},
+    currentIndex:current,runId:quiz.runId||"",startAt:quiz.startAt||0,
+    questionStartedAt:quiz.questionStartedAt||0,endAt:quiz.endAt||0,
+    startedAt:quiz.startedAt instanceof Timestamp ? quiz.startedAt : Timestamp.fromMillis(Number(quiz.startedAt||Date.now())),
+    lead:Number(quiz.settings?.startDelay||0),sec:Number(quiz.settings?.questionSeconds||10),
+    count:questions.length,updatedAt:serverTimestamp()
+  };
+  setDoc(doc(db,"quizzes",code),quizDoc,{merge:true}).then(async()=>{
+    const qs=collection(db,"quizzes",code,"questions");
+    const existing=await getDocs(qs);
+    const wanted=new Set();
+    for(let i=0;i<questions.length;i++){
+      wanted.add(String(i));
+      const q=questions[i];
+      await setDoc(doc(db,"quizzes",code,"questions",String(i)),{question:q.question,options:q.options,category:q.category||"Uncategorized"});
+      await setDoc(doc(db,"quizzes",code,"keys",String(i)),{correctIndex:Number(q.correctIndex)||0});
+    }
+    await Promise.all(existing.docs.filter(d=>!wanted.has(d.id)).map(d=>deleteDoc(d.ref)));
+  }).catch(e=>{console.error("Firestore quiz sync failed",e);const el=$("quizStatus");if(el)el.textContent="Firebase sync error: "+(e.message||"Rules/connection जाँचें");});
+}
 function save(){persist();render()}
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}}
 function escapeHtml(v){return String(v).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;")}
@@ -41,13 +69,13 @@ $("importJson").addEventListener("click",importJson);
 $("jsonFile").addEventListener("change",e=>{const file=e.target.files&&e.target.files[0];if(file)$("importStatus").textContent="फ़ाइल चुनी गई: "+file.name+" ("+Math.round(file.size/1024)+" KB)। अब Import JSON Questions दबाएँ।"});
 $("downloadSample").onclick=()=>{const sample={exam:"Sample Quiz",questions:[{q:"भारत की राजधानी क्या है?",options:["दिल्ली","मुंबई","कोलकाता","चेन्नई"],answer:"A"}]};const a=document.createElement("a"),url=URL.createObjectURL(new Blob([JSON.stringify(sample,null,2)],{type:"application/json"}));a.href=url;a.download="netaji-quiz-sample.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
 $("generate").onclick=()=>{$("quizCode").value="NC"+Math.random().toString(36).slice(2,8).toUpperCase()};
-$("quizForm").onsubmit=e=>{e.preventDefault();quiz.id=$("quizCode").value.trim().toUpperCase();quiz.name=$("quizName").value.trim();save();alert("Quiz saved. Code: "+quiz.id)};
+$("quizForm").onsubmit=e=>{e.preventDefault();quiz.id=$("quizCode").value.trim().toUpperCase();quiz.name=$("quizName").value.trim();save();persist();alert("Quiz saved. Code: "+quiz.id)};
 $("questionForm").onsubmit=e=>{e.preventDefault();questions.push({question:$("qText").value.trim(),options:[$("a").value.trim(),$("b").value.trim(),$("c").value.trim(),$("d").value.trim()],correctIndex:+$("correct").value,category:selectedSingleCategory()});e.target.reset();save()};
 function stopTimers(){if(autoTimer)clearInterval(autoTimer);if(countdownTimer)clearInterval(countdownTimer);autoTimer=countdownTimer=null}
-function beginLive(){quiz.status="live";quiz.startAt=Date.now();quiz.runId=crypto.randomUUID();current=0;quiz.questionStartedAt=Date.now();publish();autoTimer=setInterval(()=>{const s=read();if(s.quiz?.runId!==quiz.runId||s.quiz?.status!=="live"){clearInterval(autoTimer);return}const duration=Number(quiz.settings.questionSeconds||10)*1000;if(Date.now()-Number(quiz.questionStartedAt||0)>=duration){if(current<questions.length-1){current++;quiz.questionStartedAt=Date.now();publish()}else $("end").click()}else render()},250)}
+function beginLive(){quiz.status="live";quiz.startAt=Date.now();quiz.startedAt=Timestamp.fromMillis(quiz.startAt);quiz.lead=0;quiz.sec=Number(quiz.settings.questionSeconds||10);quiz.count=questions.length;quiz.runId=crypto.randomUUID();current=0;quiz.questionStartedAt=Date.now();publish();autoTimer=setInterval(()=>{const s=read();if(s.quiz?.runId!==quiz.runId||s.quiz?.status!=="live"){clearInterval(autoTimer);return}const duration=Number(quiz.settings.questionSeconds||10)*1000;if(Date.now()-Number(quiz.questionStartedAt||0)>=duration){if(current<questions.length-1){current++;quiz.questionStartedAt=Date.now();publish()}else $("end").click()}else render()},250)}
 function openLiveScreen(){if(!quiz.id){alert("पहले Quiz Code generate करके Save Quiz करें।");return null}const tab=window.open("index.html?host=1&code="+encodeURIComponent(quiz.id),"_blank");if(!tab){$("liveStatus").textContent="Live screen popup block हो गया। Open Live Screen बटन दबाएँ या browser में popups allow करें।"}return tab}
 $("openLiveScreen").onclick=()=>openLiveScreen();
-$("start").onclick=()=>{const sec=Number($("questionSeconds").value),limit=Number($("questionLimit").value),delay=Number($("startDelay").value);if(!quiz.id){alert("पहले Quiz Code generate करके Save Quiz करें।");return}if(!questions.length){alert("पहले JSON से प्रश्न import करें या प्रश्न जोड़ें।");return}if(!Number.isFinite(sec)||sec<5||sec>600){alert("हर प्रश्न का समय 5 से 600 सेकंड के बीच रखें।");return}if(!Number.isInteger(limit)||limit<1){alert("Question limit कम से कम 1 होना चाहिए।");return}stopTimers();quiz.settings={...(quiz.settings||{}),questionSeconds:sec,questionLimit:limit,startDelay:delay};questions=shuffle([...questions]).slice(0,limit);current=0;players=read().players||[];if(delay>0){quiz.status="starting";quiz.startAt=Date.now()+delay*1000;quiz.runId=crypto.randomUUID();publish();countdownTimer=setInterval(()=>{if(Date.now()>=quiz.startAt){clearInterval(countdownTimer);countdownTimer=null;beginLive()}else render()},200)}else beginLive();alert(delay>0?"Quiz "+delay+" सेकंड की उलटी गिनती के बाद शुरू होगा।":"Quiz शुरू हो गया है! Admin panel पर timer दिखेगा।")};
+$("start").onclick=()=>{const sec=Number($("questionSeconds").value),limit=Number($("questionLimit").value),delay=Number($("startDelay").value);if(!quiz.id){alert("पहले Quiz Code generate करके Save Quiz करें।");return}if(!questions.length){alert("पहले JSON से प्रश्न import करें या प्रश्न जोड़ें।");return}if(!Number.isFinite(sec)||sec<5||sec>600){alert("हर प्रश्न का समय 5 से 600 सेकंड के बीच रखें।");return}if(!Number.isInteger(limit)||limit<1){alert("Question limit कम से कम 1 होना चाहिए।");return}stopTimers();quiz.settings={...(quiz.settings||{}),questionSeconds:sec,questionLimit:limit,startDelay:delay};questions=shuffle([...questions]).slice(0,limit);current=0;players=read().players||[];if(delay>0){quiz.status="starting";quiz.startAt=Date.now()+delay*1000;quiz.startedAt=Timestamp.fromMillis(quiz.startAt);quiz.lead=delay;quiz.sec=Number(quiz.settings.questionSeconds||10);quiz.count=questions.length;quiz.runId=crypto.randomUUID();publish();countdownTimer=setInterval(()=>{if(Date.now()>=quiz.startAt){clearInterval(countdownTimer);countdownTimer=null;beginLive()}else render()},200)}else beginLive();alert(delay>0?"Quiz "+delay+" सेकंड की उलटी गिनती के बाद शुरू होगा।":"Quiz शुरू हो गया है! Admin panel पर timer दिखेगा।")};
 $("next").onclick=()=>{if(quiz.status!=="live")return;if(current<questions.length-1){current++;quiz.questionStartedAt=Date.now();publish()}else $("end").click()};
 $("end").onclick=()=>{stopTimers();quiz.status="completed";quiz.endAt=Date.now();publish()};
 const s=read();if(s.quiz){quiz={...quiz,...s.quiz,settings:{questionSeconds:10,questionLimit:100,startDelay:0,...(s.quiz.settings||{})}};questions=s.questions||s.quiz.questions||[];players=s.players||[];$("quizCode").value=quiz.id||"";$("quizName").value=quiz.name||"";current=s.quiz.currentIndex||0;$("questionSeconds").value=quiz.settings.questionSeconds;$("questionLimit").value=quiz.settings.questionLimit;$("startDelay").value=String(quiz.settings.startDelay||0)}
