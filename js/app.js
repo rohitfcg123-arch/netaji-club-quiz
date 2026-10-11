@@ -35,17 +35,10 @@ function startListening(code){
       $("feedback").textContent="";clearOptions();
       (q.options||[]).forEach((o,i)=>{
         const b=document.createElement("button");b.type="button";b.textContent=String.fromCharCode(65+i)+". "+o;
-        if(!hostMode)b.onclick=async()=>{
+        if(!hostMode)b.onclick=()=>{
           if(answered)return;answered=true;
           [...$("options").children].forEach(x=>x.disabled=true);
-          try{
-            const keySnap=await getDoc(doc(db,"quizzes",activeCode,"keys",String(idx)));
-            if(keySnap.exists()){
-              const correct=i===Number(keySnap.data().correctIndex);
-              if(correct){score+=Number(quizState.settings?.pointsPerCorrect||10);$("score").textContent=score}
-              $("feedback").textContent=correct?"सही जवाब!":"जवाब दर्ज हो गया।";
-            }else $("feedback").textContent="आपका जवाब दर्ज हुआ।";
-          }catch(e){$("feedback").textContent="जवाब चुना गया।";}
+          $("feedback").textContent="आपका जवाब चुन लिया गया है।";
         };
         $("options").appendChild(b);
       });
