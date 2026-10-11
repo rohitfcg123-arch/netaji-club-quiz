@@ -3,32 +3,30 @@ import { collection, deleteDoc, doc, getDocs, onSnapshot, serverTimestamp, setDo
 const $=id=>document.getElementById(id),KEY="netajiQuizLiveState";
 let questions=[],current=0,quiz={id:"",name:"Saraswati Puja Quiz",status:"waiting",settings:{pointsPerCorrect:10,questionSeconds:10,questionLimit:100,startDelay:0},questions:[]},players=[],autoTimer=null,countdownTimer=null;
 const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"{}")}catch{return {}}};
+let syncChain=Promise.resolve();
 function persist(){
   const s=read();s.quiz={...quiz,questions,currentIndex:current};s.questions=questions;s.players=players;
-  try { localStorage.setItem(KEY,JSON.stringify(s)); } catch(e) { console.warn("Local cache unavailable",e); }
-  if (!quiz.id) return;
+  try{localStorage.setItem(KEY,JSON.stringify(s))}catch(e){console.warn("Local cache unavailable",e)}
+  if(!quiz.id)return Promise.resolve();
   const code=String(quiz.id).trim().toUpperCase();
-  const quizDoc={
-    id:code,name:quiz.name||"Quiz",status:quiz.status||"waiting",
-    settings:quiz.settings||{questionSeconds:10,questionLimit:100,startDelay:0},
-    currentIndex:current,runId:quiz.runId||"",startAt:quiz.startAt||0,
-    questionStartedAt:quiz.questionStartedAt||0,endAt:quiz.endAt||0,
-    startedAt:quiz.startedAt instanceof Timestamp ? quiz.startedAt : (quiz.startedAt && Number.isFinite(Number(quiz.startedAt.seconds)) ? new Timestamp(Number(quiz.startedAt.seconds), Number(quiz.startedAt.nanoseconds||0)) : Timestamp.fromMillis(Number(quiz.startAt||Date.now()))),
-    lead:Number(quiz.settings?.startDelay||0),sec:Number(quiz.settings?.questionSeconds||10),
-    count:questions.length,updatedAt:serverTimestamp()
-  };
-  setDoc(doc(db,"quizzes",code),quizDoc,{merge:true}).then(async()=>{
-    const qs=collection(db,"quizzes",code,"questions");
-    const existing=await getDocs(qs);
-    const wanted=new Set();
-    for(let i=0;i<questions.length;i++){
-      wanted.add(String(i));
-      const q=questions[i];
-      await setDoc(doc(db,"quizzes",code,"questions",String(i)),{question:q.question,options:q.options,category:q.category||"Uncategorized"});
-      await setDoc(doc(db,"quizzes",code,"keys",String(i)),{correctIndex:Number(q.correctIndex)||0});
-    }
-    await Promise.all(existing.docs.filter(d=>!wanted.has(d.id)).map(d=>deleteDoc(d.ref)));
-  }).catch(e=>{console.error("Firestore quiz sync failed",e);const el=$("quizStatus");if(el)el.textContent="Firebase sync error: "+(e.message||"Rules/connection जाँचें");});
+  const quizDoc={id:code,name:quiz.name||"Quiz",status:quiz.status||"waiting",settings:quiz.settings||{questionSeconds:10,questionLimit:100,startDelay:0},currentIndex:current,runId:quiz.runId||"",startAt:Number(quiz.startAt||0),questionStartedAt:Number(quiz.questionStartedAt||0),endAt:Number(quiz.endAt||0),startedAt:quiz.startedAt instanceof Timestamp?quiz.startedAt:(quiz.startAt?Timestamp.fromMillis(Number(quiz.startAt)):null),lead:Number(quiz.settings?.startDelay||0),sec:Number(quiz.settings?.questionSeconds||10),count:questions.length,updatedAt:serverTimestamp()};
+  syncChain=syncChain.then(()=>setDoc(doc(db,"quizzes",code),quizDoc,{merge:true}));
+  syncChain.catch(e=>{console.error("Firestore quiz sync failed",e);const el=$("quizStatus");if(el)el.textContent="Firebase sync error: "+(e.message||"Rules/connection जाँचें")});
+  return syncChain;
+}
+async function syncQuestionBank(){
+  if(!quiz.id)return;
+  const code=String(quiz.id).trim().toUpperCase();
+  await persist();
+  const qs=collection(db,"quizzes",code,"questions");
+  const existing=await getDocs(qs);
+  const wanted=new Set();
+  for(let i=0;i<questions.length;i++){
+    wanted.add(String(i));const q=questions[i];
+    await setDoc(doc(db,"quizzes",code,"questions",String(i)),{question:q.question,options:q.options,category:q.category||"Uncategorized"});
+    await setDoc(doc(db,"quizzes",code,"keys",String(i)),{correctIndex:Number(q.correctIndex)||0});
+  }
+  await Promise.all(existing.docs.filter(d=>!wanted.has(d.id)).map(d=>deleteDoc(d.ref)));
 }
 function save(){persist();render()}
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}}
