@@ -12,7 +12,7 @@ const params = new URLSearchParams(location.search);
 const hostMode = params.get("host") === "1";
 const requestedCode = (params.get("code") || "").trim().toUpperCase();
 let activeCode = "", playerName = "", quizState = null, unsubQuiz = null, unsubQuestion = null;
-let score = 0, answered = false, currentUser = null, currentIndex = -1;
+let score = 0, answered = false, currentUser = null, currentIndex = -1, questionShownAt = 0;
 
 function notice(t) { if ($("notice")) $("notice").textContent = t; }
 function authNotice(t) { if ($("authNotice")) $("authNotice").textContent = t; }
@@ -167,6 +167,7 @@ function startListening(code) {
       unsubQuestion = onSnapshot(doc(db, "quizzes", activeCode, "questions", String(idx)), qSnap => {
         if (!qSnap.exists()) { waiting("प्रश्न लोड हो रहा है…"); return; }
         const q = qSnap.data();
+        questionShownAt = Number(quizState.questionStartedAt || Date.now());
         $("status").textContent = "LIVE";
         $("question").textContent = q.question || "";
         $("feedback").textContent = "";
@@ -199,7 +200,13 @@ async function submitAnswer(selected) {
       uid: currentUser.uid,
       q: currentIndex,
       sel: selected,
-      at: serverTimestamp()
+      // Server timestamp records when Firestore accepted the answer.
+      at: serverTimestamp(),
+      // Time spent on this question, measured in milliseconds.
+      elapsedMs: Math.max(0, Math.min(
+        Number(quizState.settings?.questionSeconds || 10) * 1000,
+        Date.now() - Number(questionShownAt || quizState.questionStartedAt || Date.now())
+      ))
     });
     $("feedback").textContent = "आपका जवाब जमा हो गया।";
   } catch (err) {
@@ -218,7 +225,8 @@ function updateTimer() {
   }
   if (quizState.status === "live") {
     const sec = Number(quizState.settings?.questionSeconds || 10);
-    $("timer").textContent = Math.max(0, sec - Math.floor((Date.now() - Number(quizState.questionStartedAt || Date.now())) / 1000));
+    const remainingMs = Math.max(0, sec * 1000 - (Date.now() - Number(quizState.questionStartedAt || Date.now())));
+    $("timer").textContent = (remainingMs / 1000).toFixed(1) + " sec";
   }
 }
 setInterval(updateTimer, 250);
