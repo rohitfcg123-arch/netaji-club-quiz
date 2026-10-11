@@ -213,6 +213,7 @@ async function loadResults(){
   }
 }
 function formatPrecise(ms){return (Math.max(0,Number(ms)||0)/1000).toFixed(2)+" sec"}
+if($("refreshResults"))$("refreshResults").onclick=loadResults;
 
 const s=read();if(s.quiz){quiz={...quiz,...s.quiz,settings:{questionSeconds:10,questionLimit:100,startDelay:0,...(s.quiz.settings||{})}};questions=s.questions||s.quiz.questions||[];players=s.players||[];$("quizCode").value=quiz.id||"";$("quizName").value=quiz.name||"";current=s.quiz.currentIndex||0;$("questionSeconds").value=quiz.settings.questionSeconds;$("questionLimit").value=quiz.settings.questionLimit;$("startDelay").value=String(quiz.settings.startDelay||0)}
 render();
