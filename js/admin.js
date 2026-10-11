@@ -29,7 +29,7 @@ async function syncQuestionBank(){
   await Promise.all(existing.docs.filter(d=>!wanted.has(d.id)).map(d=>deleteDoc(d.ref)));
 }
 function save(){persist();render()}
-function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function escapeHtml(v){return String(v).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;")}
 function currentCategory(){const custom=$("customImportCategory")?.value.trim();return custom||$("importCategory")?.value||"Uncategorized"}
 function selectedSingleCategory(){return $("customSingleCategory")?.value.trim()||$("singleCategory")?.value||"Uncategorized"}
