@@ -8,7 +8,25 @@ const email = document.getElementById("adminEmail");
 const password = document.getElementById("adminPassword");
 const button = document.getElementById("adminLoginButton");
 const message = document.getElementById("adminAuthMessage");
+const logoutButton = document.getElementById("adminLogout");
 let authorizedUid = null;
+
+logoutButton?.addEventListener("click", async () => {
+  logoutButton.disabled = true;
+  try {
+    authorizedUid = null;
+    await signOut(auth);
+    password.value = "";
+    email.value = "";
+    setMessage("आप सुरक्षित रूप से Logout हो गए हैं।");
+    showGate(true);
+  } catch (error) {
+    console.error("Logout failed:", error);
+    setMessage("Logout नहीं हो पाया। दोबारा कोशिश करें।", true);
+  } finally {
+    logoutButton.disabled = false;
+  }
+});
 
 function setMessage(text, isError = false) {
   message.textContent = text;
