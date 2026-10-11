@@ -10,47 +10,16 @@ const button = document.getElementById("adminLoginButton");
 const message = document.getElementById("adminAuthMessage");
 const logoutButton = document.getElementById("adminLogout");
 let authorizedUid = null;
-
-async function handleAdminLogout() {
-  if (!logoutButton) return;
-  logoutButton.disabled = true;
-  logoutButton.textContent = "Logging out…";
-  try {
-    await signOut(auth);
-    authorizedUid = null;
-    password.value = "";
-    email.value = "";
-    showGate(true);
-    setMessage("आप सुरक्षित रूप से Logout हो गए हैं।");
-  } catch (error) {
-    console.error("Logout failed:", error);
-    setMessage("Logout नहीं हो पाया: " + (error?.message || "दोबारा कोशिश करें।"), true);
-  } finally {
-    logoutButton.disabled = false;
-    logoutButton.textContent = "Logout";
-  }
-}
-if (logoutButton) {
-  logoutButton.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    void handleAdminLogout();
-  });
-  logoutButton.addEventListener("pointerup", (event) => {
-    if (event.pointerType === "touch") {
-      event.preventDefault();
-      void handleAdminLogout();
-    }
-  });
-}
+let logoutInProgress = false;
 
 function setMessage(text, isError = false) {
+  if (!message) return;
   message.textContent = text;
   message.style.background = isError ? "#fde8e8" : "";
   message.style.color = isError ? "#8c2026" : "";
 }
 function showGate(show) {
-  gate.style.display = show ? "grid" : "none";
+  if (gate) gate.style.display = show ? "grid" : "none";
   document.body.style.overflow = show ? "hidden" : "";
 }
 async function verifyAdmin(user) {
@@ -59,8 +28,48 @@ async function verifyAdmin(user) {
     throw new Error("इस account को Admin permission नहीं मिली। Firestore में admins/" + user.uid + " document और Boolean active=true जाँचें।");
   }
 }
-form.addEventListener("submit", async (event) => {
+
+async function handleAdminLogout(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+  }
+  if (logoutInProgress) return;
+  logoutInProgress = true;
+  if (logoutButton) {
+    logoutButton.disabled = true;
+    logoutButton.textContent = "Logging out…";
+  }
+  setMessage("Logout किया जा रहा है…");
+  try {
+    await signOut(auth);
+    authorizedUid = null;
+    if (password) password.value = "";
+    if (email) email.value = "";
+    showGate(true);
+    setMessage("आप सुरक्षित रूप से Logout हो गए हैं।");
+  } catch (error) {
+    console.error("Logout failed:", error);
+    setMessage("Logout नहीं हो पाया: " + (error?.message || "दोबारा कोशिश करें।"), true);
+  } finally {
+    logoutInProgress = false;
+    if (logoutButton) {
+      logoutButton.disabled = false;
+      logoutButton.textContent = "Logout";
+    }
+  }
+}
+
+// Capture the click before any other page script can intercept it.
+document.addEventListener("click", (event) => {
+  const target = event.target instanceof Element ? event.target.closest("#adminLogout") : null;
+  if (target) void handleAdminLogout(event);
+}, true);
+
+form?.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (!button || !email || !password) return;
   button.disabled = true;
   setMessage("Login और Admin permission जाँची जा रही है…");
   try {
@@ -85,6 +94,7 @@ form.addEventListener("submit", async (event) => {
     button.disabled = false;
   }
 });
+
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     authorizedUid = null;
