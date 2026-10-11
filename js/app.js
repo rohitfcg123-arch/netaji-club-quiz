@@ -115,9 +115,17 @@ if (hostMode) {
       if (!["waiting", "starting", "live"].includes(quiz.status)) {
         notice("यह Quiz अभी Join नहीं किया जा सकता।"); return;
       }
-      await setDoc(doc(db, "quizzes", code, "players", currentUser.uid), {
-        name: playerName, joinedAt: serverTimestamp()
-      });
+      const playerRef = doc(db, "quizzes", code, "players", currentUser.uid);
+      const playerSnap = await getDoc(playerRef);
+      if (!playerSnap.exists()) {
+        await setDoc(playerRef, {
+          name: playerName, joinedAt: serverTimestamp()
+        });
+      } else if (playerSnap.data().name !== playerName) {
+        notice("Aap is quiz mein pehle se join kar chuke hain. Wahi naam use karein: " + playerSnap.data().name);
+        playerName = playerSnap.data().name;
+        $("playerName").value = playerName;
+      }
       showGame();
       notice(playerName + ", आप Quiz से जुड़ गए हैं।");
       startListening(code);
