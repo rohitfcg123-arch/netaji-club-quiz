@@ -22,3 +22,15 @@ This repository currently provides a browser-only prototype. The Admin and playe
 - Automatic question advance every 10 seconds: browser prototype only.
 - Cross-device synchronization: not implemented yet.
 - Server-validated answers/scoring and secure admin authorization: not implemented in the frontend yet.
+
+
+## Live quiz sync (added 12 Oct 2026)
+The Admin and Player pages now use Cloud Firestore for quiz metadata and question documents:
+- `quizzes/{CODE}`: quiz status, current question index, settings and timer timestamps.
+- `quizzes/{CODE}/questions/{INDEX}`: question text/options, without the answer key.
+- `quizzes/{CODE}/keys/{INDEX}`: answer key, admin-only.
+
+### Required: publish Firestore Rules
+GitHub commits do NOT publish rules to Firebase automatically. In Firebase Console → Firestore Database → Rules, replace the current rules with the contents of `firestore.rules` in this repository and click **Publish**. The existing `admins/{UID}` document must have Boolean `active: true` for the admin account.
+
+The live quiz uses Firestore (database), not Firebase Storage (file storage). Do not put live quiz state or answer keys in a publicly readable document. The current client-side version supports live quiz/question display; secure answer submission and server-side scoring still require a trusted backend/Cloud Function.
