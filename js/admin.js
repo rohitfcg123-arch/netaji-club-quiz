@@ -13,7 +13,7 @@ function persist(){
     settings:quiz.settings||{questionSeconds:10,questionLimit:100,startDelay:0},
     currentIndex:current,runId:quiz.runId||"",startAt:quiz.startAt||0,
     questionStartedAt:quiz.questionStartedAt||0,endAt:quiz.endAt||0,
-    startedAt:quiz.startedAt instanceof Timestamp ? quiz.startedAt : (quiz.startedAt && Number.isFinite(Number(quiz.startedAt.seconds)) ? new Timestamp(Number(quiz.startedAt.seconds), Number(quiz.startedAt.nanoseconds||0)) : Timestamp.fromMillis(Number(quiz.startAt||Date.now())),
+    startedAt:quiz.startedAt instanceof Timestamp ? quiz.startedAt : (quiz.startedAt && Number.isFinite(Number(quiz.startedAt.seconds)) ? new Timestamp(Number(quiz.startedAt.seconds), Number(quiz.startedAt.nanoseconds||0)) : Timestamp.fromMillis(Number(quiz.startAt||Date.now()))),
     lead:Number(quiz.settings?.startDelay||0),sec:Number(quiz.settings?.questionSeconds||10),
     count:questions.length,updatedAt:serverTimestamp()
   };
