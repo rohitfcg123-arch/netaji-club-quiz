@@ -280,3 +280,34 @@ body.host-mode {
  .host-foot-icon{font-size:11px}.host-foot-stat strong{font-size:10px}.host-foot-stat small{font-size:7px}
  .host-foot-divider{display:none}
 }
+
+
+/* UPDATE: prevent question panel content from being clipped on projector landscape */
+.host-mode .host-main{min-height:0;min-width:0}
+.host-mode .host-question-panel{min-width:0;min-height:0;overflow:hidden}
+.host-mode .host-translations,.host-mode .host-lang{min-width:0;min-height:0}
+.host-mode .host-lang h2{max-width:100%;overflow-wrap:anywhere;word-break:normal}
+@media (orientation:landscape) and (max-height:700px){
+ .host-mode #hostBoard{grid-template-rows:auto minmax(0,1fr) auto}
+ .host-mode .host-main{grid-template-rows:minmax(135px,1.25fr) auto minmax(68px,.55fr);gap:6px}
+ .host-mode .host-question-panel{min-height:135px;overflow:auto}
+ .host-mode .host-translations{align-items:stretch}
+ .host-mode .host-lang{justify-content:center;overflow:visible}
+ .host-mode .host-lang h2{font-size:clamp(14px,2.8vh,22px);line-height:1.14;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden}
+ .host-mode .host-translation-warning{overflow-wrap:anywhere}
+ .host-mode #options.host-options{grid-template-columns:repeat(4,minmax(0,1fr));min-height:68px}
+ .host-mode .host-option{min-width:0;overflow:hidden}
+ .host-mode .host-option-copy{min-width:0}
+ .host-mode .host-option-en,.host-mode .host-option-hi,.host-mode .host-option-bn{overflow-wrap:anywhere;word-break:break-word}
+ .host-mode .host-ranking-panel{min-height:0;overflow:hidden}
+ .host-mode .host-rank-grid{min-height:0;overflow-y:auto;align-content:start}
+}
+@media (max-width:650px) and (orientation:landscape){
+ .host-mode .host-main{grid-template-rows:minmax(105px,1.15fr) auto minmax(58px,.45fr);gap:4px}
+ .host-mode .host-question-panel{min-height:105px;padding:5px;overflow:auto}
+ .host-mode .host-lang h2{font-size:clamp(10px,2.8vh,16px);line-height:1.1;-webkit-line-clamp:4}
+ .host-mode .host-mode #options.host-options{grid-template-columns:repeat(4,minmax(0,1fr))}
+ .host-mode .host-option{padding:3px;gap:3px}
+ .host-mode .host-option-en{font-size:clamp(9px,2vh,12px)}
+ .host-mode .host-option-hi,.host-mode .host-option-bn{font-size:clamp(7px,1.4vh,9px)}
+}
