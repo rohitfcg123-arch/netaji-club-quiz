@@ -60,18 +60,22 @@ if (hostMode) {
     back.href = "admin.html";
     back.textContent = "← Admin Home";
     back.style.cssText = "display:inline-block;background:#fff8e8;border:1px solid #d9cba8;border-radius:10px;padding:9px 12px;text-decoration:none;white-space:nowrap";
-    // Return to the original Admin tab whenever the review was opened from Admin.
-    // A named review window is used so the opener is retained on repeat visits.
+    // Review is opened in the same tab so browser Back restores the exact logged-in Admin page.
+    back.href = "admin.html";
     back.addEventListener("click", event => {
-      if (window.opener && !window.opener.closed) {
-        event.preventDefault();
-        try {
-          window.opener.focus();
-          window.close();
-        } catch (error) {
-          console.warn("Could not focus/close review tab", error);
-          window.opener.location.href = new URL("admin.html", window.location.href).href;
+      try {
+        const returnFlag = sessionStorage.getItem("ncAdminReviewReturn") === "1";
+        const fromAdmin = document.referrer && new URL(document.referrer).origin === location.origin && new URL(document.referrer).pathname.endsWith("/admin.html");
+        if (returnFlag && fromAdmin && history.length > 1) {
+          event.preventDefault();
+          sessionStorage.removeItem("ncAdminReviewReturn");
+          history.back();
+        } else {
+          // Directly opened review pages still have a safe, normal Admin Portal link.
+          sessionStorage.removeItem("ncAdminReviewReturn");
         }
+      } catch (error) {
+        console.warn("Admin return navigation fallback:", error);
       }
     });
     hostHeader.appendChild(back);
