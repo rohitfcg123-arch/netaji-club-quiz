@@ -4,7 +4,7 @@ import {
   getIdTokenResult
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {
-  doc, getDoc, onSnapshot, setDoc, serverTimestamp
+  collection, doc, getDoc, onSnapshot, setDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const $ = id => document.getElementById(id);
@@ -15,6 +15,265 @@ let activeCode = "", playerName = "", quizState = null, unsubQuiz = null, unsubQ
 let score = 0, correctCount = 0, answered = false, currentUser = null, currentIndex = -1, questionShownAt = 0, activeQuestionData = null;
 let selectedLanguage = localStorage.getItem("ncQuizLanguage") || "hi";
 const languageNames = { hi: "हिंदी", en: "English", bn: "বাংলা" };
+
+let hostAdminVerified = false;
+let hostDataCode = "";
+let hostDataUnsubs = [];
+let hostPlayers = [];
+let hostAnswers = [];
+let hostKeys = new Map();
+let hostQuestionStarts = new Map();
+let hostCurrentRankByUid = new Map();
+let hostBaseRanks = new Map();
+let hostHasRankBaseline = false;
+let hostLastBaselineQuestion = -1;
+let hostLastTickMarker = "";
+let hostAudioContext = null;
+
+function renderHostShell() {
+  document.title = "Netaji Club | Live Quiz Projection";
+  document.body.innerHTML = [
+    '<div id="hostBoard" class="host-board">',
+    ' <header class="host-header">',
+    '  <div class="host-brand"><div class="host-logo">NC</div><div><div class="host-brand-hi">नेताजी क्लब</div><div class="host-brand-en">QUIZ COMPETITION</div><div class="host-motto">ज्ञान <span>•</span> संस्कृति <span>•</span> एकता</div></div></div>',
+    '  <div class="host-round"><span class="host-round-label">ROUND 1</span><strong id="hostQuizName">Saraswati Puja Quiz</strong><span id="hostCategoryTop">General Knowledge</span></div>',
+    '  <div class="host-clock-wrap"><div class="host-clock-ring" id="hostTimerRing"><div class="host-clock-inner"><strong id="timer">—</strong><small id="hostTimerUnit">SECONDS</small></div></div><div class="host-clock-caption" id="status">WAITING</div></div>',
+    ' </header>',
+    ' <main id="hostMain" class="host-main">',
+    '  <section class="host-question-panel">',
+    '   <div class="host-question-top"><span class="host-question-number">QUESTION <b id="hostQuestionNo">—</b></span><span class="host-points">LIVE QUESTION</span></div>',
+    '   <div class="host-translations">',
+    '    <article class="host-lang host-lang-en"><span class="host-lang-tag">ENGLISH</span><h2 id="hostQuestionEn">Waiting for the quiz to start…</h2></article>',
+    '    <article class="host-lang host-lang-hi"><span class="host-lang-tag">हिंदी</span><h2 id="hostQuestionHi">क्विज़ शुरू होने का इंतज़ार है…</h2></article>',
+    '    <article class="host-lang host-lang-bn"><span class="host-lang-tag">বাংলা</span><h2 id="hostQuestionBn">কুইজ শুরু হওয়ার অপেক্ষায়…</h2></article>',
+    '   </div>',
+    '  </section>',
+    '  <section id="options" class="host-options" aria-label="Answer options"></section>',
+    '  <section class="host-ranking-panel"><div class="host-ranking-heading"><span class="host-trophy">🏆</span><h2>LIVE RANKING</h2><span class="host-ranking-note">Ranks update automatically as answers arrive</span></div><div id="hostRankGrid" class="host-rank-grid"><div class="host-board-empty">Waiting for participants…</div></div></section>',
+    ' </main>',
+    ' <footer class="host-footer"><div class="host-foot-stat"><span class="host-foot-icon">👥</span><div><strong id="hostParticipants">0</strong><small>Participants Joined</small></div></div><div class="host-foot-divider"></div><div class="host-foot-stat"><span class="host-foot-icon">🏅</span><div><strong id="hostRoundFooter">Round 1</strong><small id="hostFooterCategory">General Knowledge</small></div></div><div class="host-foot-divider"></div><div class="host-foot-stat"><span class="host-foot-icon">📊</span><div><strong id="hostProgress">0 / 0</strong><small>Questions Progress</small></div></div></footer>',
+    ' <div id="hostMessage" class="host-message" role="status" aria-live="polite"></div>',
+    ' <h2 id="question" class="host-sr-only"></h2><p id="feedback" class="host-sr-only"></p><span id="score" class="host-sr-only">0</span><span id="correctCount" class="host-sr-only">0</span>',
+    '</div>'
+  ].join("");
+}
+
+function hostMessage(message, mode) {
+  const el = $("hostMessage");
+  if (!el) return;
+  el.textContent = message || "";
+  el.className = "host-message" + (mode ? " host-message-" + mode : "");
+}
+function hostStamp(value) {
+  if (!value) return 0;
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (value instanceof Date) return value.getTime();
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+function hostInitials(name) {
+  const bits = String(name || "?").trim().split(/\s+/).filter(Boolean);
+  return (bits.slice(0, 2).map(x => Array.from(x)[0] || "").join("") || "?").toUpperCase();
+}
+function hostSafeImage(value) {
+  const s = String(value || "");
+  return /^https:\/\//i.test(s) ? s : "";
+}
+function hostTranslation(q, lang) {
+  const tr = q && q.translations && q.translations[lang];
+  if (tr && typeof tr.question === "string" && Array.isArray(tr.options) && tr.options.length === 4) return tr;
+  if (lang === "hi" || (!q || !q.translations)) return { question: q && q.question || "", options: q && q.options || [], fallback: true };
+  const missing = lang === "en" ? "English translation unavailable" : "এই প্রশ্নটির বাংলা অনুবাদ নেই";
+  return { question: missing, options: [], fallback: true };
+}
+function renderHostQuestion(q) {
+  const en = hostTranslation(q, "en");
+  const hi = hostTranslation(q, "hi");
+  const bn = hostTranslation(q, "bn");
+  $("hostQuestionEn").textContent = en.question || "English translation unavailable";
+  $("hostQuestionHi").textContent = hi.question || "हिंदी में प्रश्न उपलब्ध नहीं";
+  $("hostQuestionBn").textContent = bn.question || "এই প্রশ্নটির বাংলা অনুবাদ নেই";
+  $("question").textContent = hi.question || "";
+  const optHost = $("options");
+  optHost.innerHTML = "";
+  for (let i = 0; i < 4; i++) {
+    const letter = String.fromCharCode(65 + i);
+    const option = document.createElement("article");
+    option.className = "host-option host-option-" + letter.toLowerCase();
+    const enText = en.options && en.options[i] ? en.options[i] : (en.fallback && i < (q?.options || []).length ? q.options[i] : "—");
+    const hiText = hi.options && hi.options[i] ? hi.options[i] : (i < (q?.options || []).length ? q.options[i] : "—");
+    const bnText = bn.options && bn.options[i] ? bn.options[i] : "—";
+    option.innerHTML = '<span class="host-option-letter">' + letter + '</span><div class="host-option-copy"><strong class="host-option-en"></strong><span class="host-option-hi"></span><span class="host-option-bn"></span></div>';
+    option.querySelector(".host-option-en").textContent = String(enText);
+    option.querySelector(".host-option-hi").textContent = String(hiText);
+    option.querySelector(".host-option-bn").textContent = String(bnText);
+    optHost.appendChild(option);
+  }
+  const category = String(q?.category || quizState?.name || "General Knowledge");
+  $("hostCategoryTop").textContent = category;
+  $("hostFooterCategory").textContent = category;
+  $("hostQuizName").textContent = String(quizState?.name || "Quiz Competition");
+  updateHostMeta();
+}
+function updateHostMeta() {
+  if (!hostMode) return;
+  const total = Math.max(0, Number(quizState?.count || 0));
+  const idx = Number(quizState?.currentIndex ?? currentIndex);
+  $("hostQuestionNo").textContent = quizState?.status === "live" && idx >= 0 ? String(idx + 1) + " of " + total : "— of " + total;
+  $("hostProgress").textContent = (quizState?.status === "live" && idx >= 0 ? idx + 1 : 0) + " / " + total;
+  $("hostQuizName").textContent = String(quizState?.name || "Quiz Competition");
+  if (activeQuestionData?.category) {
+    $("hostCategoryTop").textContent = String(activeQuestionData.category);
+    $("hostFooterCategory").textContent = String(activeQuestionData.category);
+  } else {
+    $("hostCategoryTop").textContent = String(quizState?.name || "General Knowledge");
+    $("hostFooterCategory").textContent = String(quizState?.name || "General Knowledge");
+  }
+  $("hostParticipants").textContent = String(hostPlayers.length);
+}
+function renderHostWaiting(message) {
+  if (!hostMode) return;
+  $("status").textContent = quizState?.status === "starting" ? "STARTING" : quizState?.status === "completed" ? "COMPLETED" : "WAITING";
+  $("hostQuestionEn").textContent = message || "Waiting for the quiz to start…";
+  $("hostQuestionHi").textContent = message || "क्विज़ शुरू होने का इंतज़ार है…";
+  $("hostQuestionBn").textContent = message || "কুইজ শুরু হওয়ার অপেক্ষায়…";
+  $("question").textContent = message || "";
+  $("options").innerHTML = "";
+  updateHostMeta();
+}
+function renderHostTimer(seconds, totalSeconds) {
+  if (!hostMode) return;
+  const remaining = Math.max(0, Math.ceil(Number(seconds) || 0));
+  $("timer").textContent = String(remaining);
+  $("hostTimerUnit").textContent = "SECONDS";
+  const total = Math.max(1, Number(totalSeconds) || 1);
+  const ring = $("hostTimerRing");
+  if (ring) {
+    ring.style.setProperty("--timer-deg", (Math.max(0, Math.min(1, remaining / total)) * 360) + "deg");
+    ring.classList.toggle("host-timer-low", remaining <= 5);
+  }
+  const marker = String(currentIndex) + ":" + String(remaining);
+  const enabled = localStorage.getItem("ncTimerSoundEnabled") !== "false";
+  if (enabled && remaining > 0 && marker !== hostLastTickMarker) playHostTick();
+  hostLastTickMarker = marker;
+}
+function playHostTick() {
+  try {
+    const AudioCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtor) return;
+    if (!hostAudioContext) hostAudioContext = new AudioCtor();
+    if (hostAudioContext.state === "suspended") hostAudioContext.resume().catch(() => {});
+    const oscillator = hostAudioContext.createOscillator();
+    const gain = hostAudioContext.createGain();
+    oscillator.type = "square";
+    oscillator.frequency.value = 880;
+    gain.gain.setValueAtTime(0.0001, hostAudioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.045, hostAudioContext.currentTime + 0.006);
+    gain.gain.exponentialRampToValueAtTime(0.0001, hostAudioContext.currentTime + 0.055);
+    oscillator.connect(gain);
+    gain.connect(hostAudioContext.destination);
+    oscillator.start();
+    oscillator.stop(hostAudioContext.currentTime + 0.06);
+  } catch (e) {
+    console.debug("Timer audio blocked by browser:", e);
+  }
+}
+function startHostLiveData(code) {
+  if (!hostAdminVerified || hostDataCode === code) return;
+  hostDataCode = code;
+  hostDataUnsubs.forEach(fn => fn());
+  hostDataUnsubs = [];
+  const base = ["quizzes", code];
+  const subscribe = (path, callback, label) => {
+    const unsub = onSnapshot(collection(db, ...path), callback, error => {
+      console.error("Host " + label + " listener failed:", error);
+      hostMessage("Live " + label + " sync failed. Firebase Admin permissions/network check karein.", "error");
+    });
+    hostDataUnsubs.push(unsub);
+  };
+  subscribe(base.concat(["players"]), snap => {
+    hostPlayers = snap.docs.map(d => ({ ...d.data(), uid: d.id }));
+    recalculateHostRanking();
+    updateHostMeta();
+  }, "participants");
+  subscribe(base.concat(["answers"]), snap => {
+    hostAnswers = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+    recalculateHostRanking();
+  }, "answers");
+  subscribe(base.concat(["keys"]), snap => {
+    hostKeys = new Map(snap.docs.map(d => [d.id, Number(d.data().correctIndex)]));
+    recalculateHostRanking();
+  }, "answer keys");
+  subscribe(base.concat(["questionTiming"]), snap => {
+    hostQuestionStarts = new Map(snap.docs.map(d => [d.id, d.data()]));
+    recalculateHostRanking();
+  }, "question timing");
+}
+function recalculateHostRanking() {
+  if (!hostMode) return;
+  const total = Math.max(0, Number(quizState?.count || 0));
+  const points = Number(quizState?.settings?.pointsPerCorrect || 10);
+  const rows = hostPlayers.map(p => {
+    const mine = hostAnswers.filter(a => a.uid === p.uid);
+    const correct = mine.filter(a => hostKeys.has(String(a.q)) && hostKeys.get(String(a.q)) === Number(a.sel)).length;
+    let elapsed = 0, timedAnswers = 0;
+    for (const a of mine) {
+      const marker = hostQuestionStarts.get(String(a.q));
+      const started = marker && (!quizState?.runId || marker.runId === quizState.runId) ? hostStamp(marker.startedAt) : 0;
+      const received = hostStamp(a.at);
+      if (started > 0 && received > 0) {
+        elapsed += Math.max(0, received - started);
+        timedAnswers++;
+      }
+    }
+    return {
+      ...p, correct, answered: mine.length, score: correct * points, elapsed, timedAnswers,
+      completed: total > 0 && mine.length >= total
+    };
+  });
+  rows.sort((a, b) =>
+    b.correct - a.correct ||
+    Number(b.completed) - Number(a.completed) ||
+    (a.timedAnswers ? a.elapsed : Number.POSITIVE_INFINITY) - (b.timedAnswers ? b.elapsed : Number.POSITIVE_INFINITY) ||
+    String(a.name || "").localeCompare(String(b.name || ""))
+  );
+  const newRanks = new Map(rows.map((p, i) => [p.uid, i + 1]));
+  hostCurrentRankByUid = newRanks;
+  const grid = $("hostRankGrid");
+  if (!grid) return;
+  const visible = rows.slice(0, 10);
+  if (!visible.length) {
+    grid.innerHTML = '<div class="host-board-empty">Waiting for participants…</div>';
+    return;
+  }
+  grid.innerHTML = visible.map((p, i) => {
+    const rank = i + 1;
+    const oldRank = hostHasRankBaseline ? hostBaseRanks.get(p.uid) : undefined;
+    const delta = oldRank == null ? 0 : oldRank - rank;
+    const movement = delta > 0 ? '<span class="host-movement up">▲ +' + delta + '</span>' : delta < 0 ? '<span class="host-movement down">▼ ' + delta + '</span>' : '<span class="host-movement same">—</span>';
+    const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : "";
+    const safeName = String(p.name || "Player");
+    const photo = hostSafeImage(p.photoURL);
+    const avatar = photo ? '<img src="' + escapeHostHtml(photo) + '" alt="" referrerpolicy="no-referrer">' : '<span>' + escapeHostHtml(hostInitials(safeName)) + '</span>';
+    const klass = rank <= 3 ? " host-rank-top-" + rank : "";
+    return '<article class="host-rank-card' + klass + '"><div class="host-rank-card-top"><span class="host-rank-number">' + rank + '</span><span class="host-medal">' + medal + '</span></div><div class="host-avatar">' + avatar + '</div><strong class="host-player-name">' + escapeHostHtml(safeName) + '</strong><strong class="host-player-score">' + p.score + ' pts</strong><small class="host-player-detail">' + p.correct + ' correct · ' + p.answered + '/' + total + '</small>' + movement + '</article>';
+  }).join("");
+}
+function escapeHostHtml(v) {
+  return String(v).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+}
+async function verifyHostAdmin(user) {
+  if (!user) throw new Error("Admin login session not found. Admin Portal se Review Quiz kholein.");
+  const token = await getIdTokenResult(user);
+  if (token.claims.firebase?.sign_in_provider !== "password") throw new Error("Review screen sirf Admin Portal ke verified Admin account ke liye hai.");
+  const adminSnap = await getDoc(doc(db, "admins", user.uid));
+  if (!adminSnap.exists() || adminSnap.data()?.active !== true) throw new Error("Is account ko active Admin permission nahi hai.");
+  hostAdminVerified = true;
+  startHostLiveData(requestedCode);
+  startListening(requestedCode);
+  hostMessage("", "");
+}
+
 function localizedQuestion(q) {
   const t = q && q.translations && q.translations[selectedLanguage];
   if (t && typeof t.question === "string" && Array.isArray(t.options) && t.options.length === 4) return t;
@@ -51,45 +310,21 @@ function authError(e) {
 }
 
 if (hostMode) {
-  // The host review screen is opened separately from Admin Dashboard; provide a clear return path.
-  const hostHeader = document.querySelector("header.top");
-  if (hostHeader && !document.getElementById("hostAdminBack")) {
-    const back = document.createElement("a");
-    back.id = "hostAdminBack";
-    back.className = "link";
-    back.href = "admin.html";
-    back.textContent = "← Admin Home";
-    back.style.cssText = "display:inline-block;background:#fff8e8;border:1px solid #d9cba8;border-radius:10px;padding:9px 12px;text-decoration:none;white-space:nowrap";
-    // Review is opened in the same tab so browser Back restores the exact logged-in Admin page.
-    back.href = "admin.html";
-    back.addEventListener("click", event => {
-      try {
-        const returnFlag = sessionStorage.getItem("ncAdminReviewReturn") === "1";
-        // document.referrer can be empty/changed on mobile browsers even when this
-        // page was opened from Admin. The same-tab session flag is our navigation
-        // hint; it is NOT an authentication grant. Return to the existing dashboard
-        // document so its live state and Firebase-authenticated session are preserved.
-        if (returnFlag && history.length > 1) {
-          event.preventDefault();
-          sessionStorage.removeItem("ncAdminReviewReturn");
-          history.go(-1);
-        } else {
-          // Directly opened review pages still use the normal Admin Portal link.
-          sessionStorage.removeItem("ncAdminReviewReturn");
-        }
-      } catch (error) {
-        console.warn("Admin return navigation fallback:", error);
-      }
-    });
-    hostHeader.appendChild(back);
-  }
   document.body.classList.add("host-mode");
-  document.querySelector(".hero")?.classList.add("hidden");
-  $("game").classList.remove("hidden");
-  $("score")?.closest("p")?.classList.add("hidden");
-  $("feedback").classList.add("hidden");
-  if (requestedCode) startListening(requestedCode);
-  else waiting("Quiz Code नहीं मिला।");
+  renderHostShell();
+  if (!requestedCode) {
+    hostMessage("Quiz Code नहीं मिला। Admin Portal से Review Quiz खोलें।", "error");
+    renderHostWaiting("Quiz Code missing");
+  } else {
+    onAuthStateChanged(auth, user => {
+      verifyHostAdmin(user).catch(error => {
+        console.error("Review screen Admin verification failed:", error);
+        hostAdminVerified = false;
+        hostMessage(error.message || "Admin verification failed.", "error");
+        renderHostWaiting("Admin verification required");
+      });
+    });
+  }
 } else {
   // This site is hosted on GitHub Pages, so use popup OAuth instead of a full
   // redirect through firebaseapp.com. Modern browsers can block the cross-site
