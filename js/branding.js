@@ -86,7 +86,7 @@ export function normalizeBranding(input) {
   const text = {};
   for (const [key, fallback] of Object.entries(BRANDING_DEFAULTS.text)) {
     const candidate = value.text && value.text[key];
-    text[key] = typeof candidate === "string" ? candidate.slice(0, 180) : fallback;
+    text[key] = typeof candidate === "string" && candidate.trim() ? candidate.slice(0, 180) : fallback;
   }
   return {
     preset,
