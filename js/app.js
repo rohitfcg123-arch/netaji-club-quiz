@@ -47,7 +47,7 @@ function renderHostShell() {
     '<div id="hostBoard" class="host-board">',
     ' <header class="host-header">',
     '  <div class="host-brand"><div class="host-logo">NC</div><div><div class="host-brand-hi" data-brand-text="clubName">नेताजी क्लब</div><div class="host-brand-en" data-brand-text="competitionLabel">QUIZ COMPETITION</div><div class="host-motto" data-brand-text="tagline">ज्ञान • संस्कृति • एकता</div></div></div>',
-    '  <div class="host-round"><span class="host-round-label">ROUND 1</span><strong id="hostQuizName">Saraswati Puja Quiz</strong><span id="hostCategoryTop">General Knowledge</span></div>',
+    '  <div class="host-round"><span class="host-round-label" data-brand-text="roundName">ROUND 1</span><strong id="hostQuizName">Saraswati Puja Quiz</strong><span id="hostCategoryTop">General Knowledge</span></div>',
     '  <div class="host-clock-wrap"><div class="host-clock-ring" id="hostTimerRing"><div class="host-clock-inner"><strong id="timer">—</strong><small id="hostTimerUnit">SECONDS</small></div></div><div class="host-clock-caption" id="status">WAITING</div></div>',
     ' </header>',
     ' <main id="hostMain" class="host-main">',
@@ -62,7 +62,7 @@ function renderHostShell() {
     '  <section id="options" class="host-options" aria-label="Answer options"></section>',
     '  <section class="host-ranking-panel"><div class="host-ranking-heading"><span class="host-trophy">🏆</span><h2 data-brand-text="rankingHeading">LIVE RANKING</h2><span class="host-ranking-note" data-brand-text="rankingSubtitle">Ranks update automatically as answers arrive</span></div><div id="hostRankGrid" class="host-rank-grid"><div class="host-board-empty">Waiting for participants…</div></div></section>',
     ' </main>',
-    ' <footer class="host-footer"><div class="host-foot-stat"><span class="host-foot-icon">👥</span><div><strong id="hostParticipants">0</strong><small>Participants Joined</small></div></div><div class="host-foot-divider"></div><div class="host-foot-stat"><span class="host-foot-icon">🏅</span><div><strong id="hostRoundFooter">Round 1</strong><small id="hostFooterCategory">General Knowledge</small></div></div><div class="host-foot-divider"></div><div class="host-foot-stat"><span class="host-foot-icon">📊</span><div><strong id="hostProgress">0 / 0</strong><small>Questions Progress</small></div></div></footer>',
+    ' <footer class="host-footer"><div class="host-foot-stat"><span class="host-foot-icon">👥</span><div><strong id="hostParticipants">0</strong><small>Participants Joined</small></div></div><div class="host-foot-divider"></div><div class="host-foot-stat"><span class="host-foot-icon">🏅</span><div><strong id="hostRoundFooter" data-brand-text="roundName">Round 1</strong><small id="hostFooterCategory">General Knowledge</small></div></div><div class="host-foot-divider"></div><div class="host-foot-stat"><span class="host-foot-icon">📊</span><div><strong id="hostProgress">0 / 0</strong><small data-brand-text="progressLabel">Questions Progress</small></div></div></footer>',
     ' <div id="hostMessage" class="host-message" role="status" aria-live="polite"></div>',
     ' <h2 id="question" class="host-sr-only"></h2><p id="feedback" class="host-sr-only"></p><span id="score" class="host-sr-only">0</span><span id="correctCount" class="host-sr-only">0</span>',
     '</div>'
