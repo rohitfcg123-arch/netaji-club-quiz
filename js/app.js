@@ -473,7 +473,7 @@ function startListening(code) {
       if (hostMode) { renderHostWaiting("Quiz starts in a moment…"); $("status").textContent = "STARTING"; updateTimer(); }
       return;
     }
-    if (quizState.status !== "live") { waiting("Admin के Quiz शुरू करने का इंतज़ार है"); return; }
+    if (quizState.status !== "live") { waiting(activeBranding?.text?.waitingText || "Admin के Quiz शुरू करने का इंतज़ार है"); return; }
 
     const idx = Number(quizState.currentIndex || 0);
     if (idx !== currentIndex) {
