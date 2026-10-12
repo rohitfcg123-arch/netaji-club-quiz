@@ -60,7 +60,7 @@ function selectedTarget() {
 }
 function setBusy(value) {
   busy = value;
-  ["tsSaveSelected","tsLoadCurrent","tsLoadDefault","tsUseDefault","tsReset"].forEach(id => { if ($(id)) $(id).disabled = value; });
+  ["tsSaveSelected","tsLoadDefault","tsReset"].forEach(id => { if ($(id)) $(id).disabled = value; });
 }
 async function ensureAdmin(user) {
   if (!user || !user.email) throw new Error("Admin login with Google आवश्यक है।");
@@ -105,8 +105,7 @@ function fillForm(input) {
   updateSaveLabel();
 }
 function updateSaveLabel() {
-  const current = selectedTarget() === "current";
-  $("tsSaveSelected").textContent = current ? "🚀 Apply to Current Quiz" : "💾 Save as Default Branding";
+  $("tsSaveSelected").textContent = "💾 Save Theme";
 }
 function renderPreview() {
   const config = collectForm();
@@ -205,41 +204,12 @@ async function saveDefault(config) {
   clearLocalDraft();
   setStatus("✅ Default branding saved to Firebase. Connected screens will receive the theme in real time.", "success");
 }
-async function saveCurrent(config) {
-  const code = quizCode();
-  if (!code) {
-    document.querySelector('input[name="tsTarget"][value="default"]').checked = true;
-    updateSaveLabel();
-    await saveDefault(config);
-    setStatus("✅ कोई Quiz Code नहीं दिया गया, इसलिए theme Default Branding में save हुई। किसी specific quiz के लिए उसका code डालें।", "success");
-    return;
-  }
-  const quizRef = doc(db, "quizzes", code);
-  const snap = await getDoc(quizRef);
-  if (!snap.exists()) throw new Error("Quiz " + code + " Firebase में नहीं मिला। पहले Admin Dashboard में Save Quiz करें।");
-  const old = snap.data();
-  const loadedForRename = loadedCurrentQuizCode === code;
-  const nextQuizName = loadedForRename ? (config.text.defaultQuizName || old.name || code) : (old.name || code);
-  await setDoc(quizRef, {
-    name: nextQuizName,
-    settings: { ...(old.settings || {}), branding: {
-      preset: config.preset, colors: config.colors, text: config.text,
-      assets: config.assets, effects: config.effects, useDefaultTheme: false
-    }},
-    updatedAt: serverTimestamp()
-  }, { merge: true });
-  localStorage.setItem(TARGET_KEY, "current");
-  localStorage.setItem("themeStudioLastQuizCode", code);
-  clearLocalDraft();
-  setStatus(loadedForRename ? ('✅ Branding and quiz name saved for "' + nextQuizName + '". Other quizzes are unchanged.') : ('✅ Branding saved for "' + nextQuizName + '". Existing quiz name was kept; load this quiz first to rename it.'), "success");
-}
 async function saveSelected() {
   if (busy) return;
   setBusy(true);
   try {
     const config = collectForm();
-    if (selectedTarget() === "default") await saveDefault(config);
-    else await saveCurrent(config);
+    await saveDefault(config);
     formDirty = false;
   } catch (error) {
     console.error("Theme Studio save failed:", error);
@@ -309,7 +279,7 @@ function allowFestivalEdit() {
 Object.values(COLOR_FIELDS).forEach(id => $(id).addEventListener("input", () => { if (!allowFestivalEdit()) { applyPresetToForm(currentBranding.preset); return; } formDirty = true; currentBranding = { ...collectForm(), preset: "custom" }; saveLocalDraft(); document.querySelectorAll("[data-preset]").forEach(b => b.classList.toggle("active", b.dataset.preset === "custom")); renderPreview(); }));
 Object.values(TEXT_FIELDS).forEach(id => $(id).addEventListener("input", () => { if (!allowFestivalEdit()) { applyPresetToForm(currentBranding.preset); return; } formDirty = true; renderPreview(); saveLocalDraft(); }));
 ["tsLogoUrl","tsBackgroundUrl","tsDecorations","tsAnimations"].forEach(id => $(id).addEventListener("input", () => { if (!allowFestivalEdit()) { applyPresetToForm(currentBranding.preset); return; } formDirty = true; renderPreview(); saveLocalDraft(); }));
-document.querySelectorAll('input[name="tsTarget"]').forEach(el => el.addEventListener("change", updateSaveLabel));
+
 $("tsSaveSelected").addEventListener("click", saveSelected);
 $("tsLoadDefault").addEventListener("click", async () => {
   if (busy) return;
@@ -331,7 +301,7 @@ $("tsReset").addEventListener("click", () => {
   document.querySelector('input[name="tsTarget"][value="default"]').checked = true;
   updateSaveLabel();
 });
-document.querySelectorAll('input[name="tsTarget"]').forEach(el => el.addEventListener("change", updateSaveLabel));
+
 
 // Keep the editor in global/default mode, but prefill a useful quiz code
 // from the last explicitly opened quiz or the current admin live state.
