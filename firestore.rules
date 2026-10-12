@@ -184,6 +184,22 @@ service cloud.firestore {
       }
     }
 
+    // -------------------------
+    // Public branding settings
+    // Only the single branding document can be read publicly.
+    // Only an authenticated, allowlisted password Admin can write it.
+    // -------------------------
+    match /siteSettings/{settingId} {
+      allow get: if settingId == 'branding';
+      allow list: if false;
+      allow create, update: if settingId == 'branding'
+        && isAdmin()
+        && request.resource.data.keys().hasOnly([
+          'preset', 'colors', 'text', 'assets', 'effects', 'updatedAt'
+        ]);
+      allow delete: if settingId == 'branding' && isAdmin();
+    }
+
     // Deny everything not explicitly allowed above.
     match /{document=**} {
       allow read, write: if false;
