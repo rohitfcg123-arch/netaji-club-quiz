@@ -194,6 +194,7 @@ function playHostTick() {
   }
 }
 function startHostLiveData(code) {
+  // Private ranking data is intentionally not read by the public Review screen.
   if (!hostAdminVerified || hostDataCode === code) return;
   hostDataCode = code;
   hostDataUnsubs.forEach(fn => fn());
@@ -345,40 +346,11 @@ if (hostMode) {
     hostMessage("Quiz Code नहीं मिला। Admin Portal से Review Quiz खोलें।", "error");
     renderHostWaiting("Quiz Code missing");
   } else {
-    // Match Admin Portal's explicit local persistence before resolving the host session.
-    // Do not bypass Firestore Rules; the same password-admin + active allowlist checks still run.
-    setPersistence(auth, browserLocalPersistence).then(() => {
-      onAuthStateChanged(auth, user => {
-      if (!user) {
-        hostAdminVerified = false;
-        hostDataUnsubs.forEach(fn => fn());
-        hostDataUnsubs = [];
-        hostDataCode = "";
-        hostPlayers = []; hostAnswers = []; hostKeys = new Map(); hostQuestionStarts = new Map();
-        if ($("hostRankGrid")) $("hostRankGrid").innerHTML = "<div class=\"host-board-empty\">Admin session required</div>";
-        hostMessage("Admin login session not found. Admin Portal mein login karke Review Quiz dobara kholein.", "error");
-        renderHostWaiting("Admin verification required");
-        $("options").innerHTML = '<div class="host-board-empty host-option-error">Admin login required to load live questions</div>';
-        $("hostQuestionEn").textContent = "Admin login required";
-        $("hostQuestionHi").textContent = "Admin login ज़रूरी है";
-        $("hostQuestionBn").textContent = "Admin লগইন প্রয়োজন";
-        return;
-      }
-      verifyHostAdmin(user).catch(error => {
-        console.error("Review screen Admin verification failed:", error);
-        hostAdminVerified = false;
-        hostDataUnsubs.forEach(fn => fn()); hostDataUnsubs = []; hostDataCode = "";
-        hostMessage(error.message || "Admin verification failed.", "error");
-        if ($("hostRankGrid")) $("hostRankGrid").innerHTML = "<div class=\"host-board-empty\">Admin access required</div>";
-        renderHostWaiting("Admin verification required");
-        $("options").innerHTML = '<div class="host-board-empty host-option-error">Admin verification required</div>';
-      });
-    });
-    }).catch(error => {
-      console.error("Could not restore persistent Admin session for review screen:", error);
-      hostMessage("Admin session restore failed. Admin Portal mein login karke Review Quiz dobara kholein.", "error");
-      renderHostWaiting("Admin session restore failed");
-    });
+    // Public read-only review screen: no Firebase Auth required.
+    // Firestore rules expose quiz metadata and only the currently active question.
+    hostAdminVerified = true;
+    startListening(requestedCode);
+    hostMessage("Live Review connected — waiting for quiz updates…", "success");
   }
 } else {
   // This site is hosted on GitHub Pages, so use popup OAuth instead of a full
