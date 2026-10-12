@@ -66,22 +66,24 @@ if (hostMode) {
 
   async function routeAuthenticatedUser(user) {
     if (!user || navigatingToJoin) return;
+    navigatingToJoin = true;
     try {
       const token = await getIdTokenResult(user);
       const provider = token.claims.firebase?.sign_in_provider;
       if (provider !== "google.com") {
+        navigatingToJoin = false;
         await signOut(auth);
         authNotice("इस Player Portal में केवल Google Account से Login कर सकते हैं।");
         $("googleLoginBtn").disabled = false;
         return;
       }
-      navigatingToJoin = true;
       $("googleLoginBtn").disabled = true;
       authNotice("✅ Google Login सफल हुआ! Quiz join पेज खोला जा रहा है…");
       // Give the success message a moment to be visible before navigation.
       setTimeout(() => location.replace(new URL("join.html", location.href).href), 450);
     } catch (error) {
       console.error("Google provider verification failed:", error);
+      navigatingToJoin = false;
       authNotice("Login verify नहीं हो पाया। Internet connection जाँचें और फिर कोशिश करें।");
       $("googleLoginBtn").disabled = false;
     }
@@ -121,7 +123,6 @@ if (hostMode) {
       if ($("googleLoginBtn")) $("googleLoginBtn").disabled = false;
     }
   });
-}
 }
 function startListening(code) {
   activeCode = String(code).toUpperCase();
