@@ -336,8 +336,12 @@ if (hostMode) {
         hostDataCode = "";
         hostPlayers = []; hostAnswers = []; hostKeys = new Map(); hostQuestionStarts = new Map();
         if ($("hostRankGrid")) $("hostRankGrid").innerHTML = "<div class=\"host-board-empty\">Admin session required</div>";
-        hostMessage("Admin login session not found. Admin Portal se Review Quiz kholein.", "error");
+        hostMessage("Admin login session not found. Admin Portal mein login karke Review Quiz dobara kholein.", "error");
         renderHostWaiting("Admin verification required");
+        $("options").innerHTML = '<div class="host-board-empty host-option-error">Admin login required to load live questions</div>';
+        $("hostQuestionEn").textContent = "Admin login required";
+        $("hostQuestionHi").textContent = "Admin login ज़रूरी है";
+        $("hostQuestionBn").textContent = "Admin লগইন প্রয়োজন";
         return;
       }
       verifyHostAdmin(user).catch(error => {
@@ -347,6 +351,7 @@ if (hostMode) {
         hostMessage(error.message || "Admin verification failed.", "error");
         if ($("hostRankGrid")) $("hostRankGrid").innerHTML = "<div class=\"host-board-empty\">Admin access required</div>";
         renderHostWaiting("Admin verification required");
+        $("options").innerHTML = '<div class="host-board-empty host-option-error">Admin verification required</div>';
       });
     });
   }
@@ -499,8 +504,33 @@ function startListening(code) {
         }
         updateTimer();
       }, e => {
-        console.error("Question listener:", e);
-        waiting("Question access error: Google Login और Firebase Rules जाँचें।");
+        console.error("Question listener failed", {
+          code: e?.code || "unknown",
+          message: e?.message || "No Firebase error message",
+          quizCode: activeCode,
+          questionIndex: idx,
+          hostMode,
+          authUid: auth.currentUser?.uid || null,
+          authProvider: auth.currentUser?.providerData?.map(p => p.providerId) || []
+        });
+        if (hostMode) {
+          hostMessage(
+            e?.code === "permission-denied"
+              ? "Firebase ने इस Admin session को questions पढ़ने की अनुमति नहीं दी। Admin login / deployed Firestore Rules जाँचें।"
+              : "Question load failed (" + (e?.code || "unknown") + "). Internet/Firebase जाँचें।",
+            "error"
+          );
+          $("status").textContent = "SYNC ERROR";
+          $("hostQuestionEn").textContent = "Question could not be loaded";
+          $("hostQuestionHi").textContent = "प्रश्न लोड नहीं हुआ";
+          $("hostQuestionBn").textContent = "প্রশ্ন লোড হয়নি";
+          $("hostFallbackEn").textContent = $("hostFallbackHi").textContent = $("hostFallbackBn").textContent = "";
+          $("options").innerHTML = '<div class="host-board-empty host-option-error">Question data unavailable — Firebase access check required</div>';
+        } else {
+          waiting(e?.code === "permission-denied"
+            ? "Question access denied: Admin/Player login और deployed Firebase Rules जाँचें।"
+            : "Question load error (" + (e?.code || "unknown") + "): " + (e?.message || "Internet/Firebase जाँचें"));
+        }
       });
     } else updateTimer();
   }, e => {
