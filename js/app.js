@@ -157,7 +157,8 @@ function renderHostTimer(seconds, totalSeconds) {
     ring.classList.toggle("host-timer-low", remaining <= 5);
   }
   const marker = String(currentIndex) + ":" + String(remaining);
-  const enabled = localStorage.getItem("ncTimerSoundEnabled") !== "false";
+  const syncedSoundSetting = quizState?.settings?.timerSoundEnabled;
+  const enabled = typeof syncedSoundSetting === "boolean" ? syncedSoundSetting : localStorage.getItem("ncTimerSoundEnabled") !== "false";
   if (enabled && remaining > 0 && marker !== hostLastTickMarker) playHostTick();
   hostLastTickMarker = marker;
 }
