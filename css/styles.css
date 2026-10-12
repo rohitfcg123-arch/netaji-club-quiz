@@ -5,3 +5,9 @@
 
 /* Admin live preview uses the same question screen as the player portal. */
 body.host-mode .hero{display:none!important}body.host-mode #game{display:block}body.host-mode #feedback.hidden{display:none!important}
+
+
+/* Player sign-in and irreversible answer feedback */
+.google-login{width:100%;margin:8px 0 14px;background:linear-gradient(135deg,#4285f4,#2265c9);box-shadow:0 4px #174ea6}
+.options button.answer-correct{background:#d7f5de!important;border:2px solid #16823b!important;color:#155b2c!important;opacity:1!important}
+.options button.answer-wrong{background:#ffe0df!important;border:2px solid #b4232b!important;color:#8c2026!important;opacity:1!important}
