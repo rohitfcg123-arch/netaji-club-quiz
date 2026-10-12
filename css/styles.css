@@ -387,3 +387,10 @@ body.brand-themed.winners-page .w-table td{border-color:var(--theme-border)!impo
 
 .host-footer-copy{font-size:clamp(8px,.7vw,12px)!important;opacity:.72}
 .w-brand{display:flex;align-items:center;gap:10px}.w-logo{display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;border-radius:50%;border:2px solid var(--theme-border,#d7aa59);background:var(--theme-primary,#8c2026);color:#fff;font-size:12px;font-weight:950;overflow:hidden}
+
+body.host-mode.brand-decorations-on #hostBoard{position:relative}
+body.host-mode.brand-decorations-on .host-header{position:relative}
+body.host-mode.brand-decorations-on .host-header:after{content:"";position:absolute;right:20%;top:2px;width:clamp(70px,8vw,130px);height:clamp(70px,8vw,130px);border-radius:50%;pointer-events:none;opacity:.11;background:conic-gradient(var(--theme-accent),transparent,var(--theme-secondary),transparent,var(--theme-primary));filter:blur(1px)}
+body.host-mode.brand-decorations-on .host-header>*{position:relative;z-index:1}
+body.host-mode.brand-animations-on .host-rank-card{animation:themeRankEntrance .42s cubic-bezier(.2,.8,.2,1) both}
+@keyframes themeRankEntrance{from{opacity:.6;transform:translateY(7px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
