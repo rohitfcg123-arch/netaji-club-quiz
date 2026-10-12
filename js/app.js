@@ -79,11 +79,17 @@ if (hostMode) {
     }
   });
 
+  // Wait until Firebase has processed the Google redirect before navigating away.
+  // This prevents the auth-state callback from interrupting redirect-result handling.
+  let redirectCheckFinished = false;
   getRedirectResult(auth).then(result => {
     if (result?.user) authNotice("Google Login सफल हुआ। आगे बढ़ रहे हैं…");
   }).catch(err => {
     console.error("Google redirect result:", err);
     authNotice(authError(err));
+  }).finally(() => {
+    redirectCheckFinished = true;
+    if (auth.currentUser) location.replace("join.html");
   });
 
   $("authForm").addEventListener("submit", async e => {
@@ -122,7 +128,7 @@ if (hostMode) {
     if (!user) return;
     const typedName = $("authName")?.value.trim();
     if (typedName && !user.displayName) localStorage.setItem("ncQuizPendingName", typedName);
-    location.replace("join.html");
+    if (redirectCheckFinished) location.replace("join.html");
   });
 }
 function startListening(code) {
