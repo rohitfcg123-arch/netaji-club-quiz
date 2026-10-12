@@ -156,7 +156,7 @@ async function joinQuiz(code, name, isResume) {
     startListening(code);
   } catch (error) {
     console.error("Join quiz:", error);
-    notice("Quiz Join नहीं हो पाया (" + stage + "): " + authError(error) + " Firebase Console में Firestore Rules Publish करें।");
+    notice("Quiz Join नहीं हो पाया (" + stage + "): " + authError(error) + " अगर Rules अभी update किए हैं तो Firebase Console में Publish करें।");
     if (isResume) localStorage.removeItem("ncQuizCode_" + currentUser.uid);
   }
 }
