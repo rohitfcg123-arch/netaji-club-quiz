@@ -19,10 +19,22 @@ service cloud.firestore {
         && request.auth.token.firebase.sign_in_provider == 'password';
     }
 
+    function rootAdmin() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'google.com'
+        && request.auth.token.email == 'rohit.fcg123@gmail.com';
+    }
+
     function isAdmin() {
-      return passwordUser()
-        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true;
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'google.com'
+        && (
+          request.auth.token.email == 'rohit.fcg123@gmail.com'
+          || (
+            exists(/databases/$(database)/documents/approvedAdminEmails/$(request.auth.token.email))
+            && get(/databases/$(database)/documents/approvedAdminEmails/$(request.auth.token.email)).data.active == true
+          )
+        );
     }
 
     function quizExists(q) {
@@ -38,6 +50,27 @@ service cloud.firestore {
         + duration.value(quiz(q).lead + i * quiz(q).sec, 's');
     }
 
+    // -------------------------
+    // Approved Google Admin emails.
+    // Only the root Admin can add, disable, or remove approvals.
+    // Document ID is the lowercase email address.
+    // -------------------------
+    match /approvedAdminEmails/{email} {
+      allow get: if rootAdmin()
+        || (signedIn()
+          && request.auth.token.firebase.sign_in_provider == 'google.com'
+          && request.auth.token.email == email);
+      allow list: if rootAdmin();
+      allow create, update: if rootAdmin()
+        && request.resource.data.keys().hasOnly(['email', 'active', 'approvedAt', 'approvedBy'])
+        && request.resource.data.email is string
+        && request.resource.data.email == email
+        && request.resource.data.active is bool;
+      allow delete: if rootAdmin();
+    }
+
+    // -------------------------
+    // Legacy UID allowlist (no longer used by the Google-only Admin login)
     // -------------------------
     // Admin allowlist
     // Create this document manually in Firebase Console:
