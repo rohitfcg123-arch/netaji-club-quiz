@@ -98,6 +98,8 @@ async function loadDefault() {
   const snap = await getDoc(doc(db, "siteSettings", "branding"));
   defaultBranding = snap.exists() ? normalizeBranding(snap.data()) : normalizeBranding(BRANDING_DEFAULTS);
   fillForm(defaultBranding);
+  document.querySelector('input[name="tsTarget"][value="default"]').checked = true;
+  updateSaveLabel();
   setStatus(snap.exists() ? "Saved default branding loaded from Firebase." : "No saved default yet; built-in Saraswati Puja theme loaded.", "success");
 }
 async function loadCurrentQuiz() {
