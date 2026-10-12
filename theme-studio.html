@@ -38,7 +38,7 @@
   <section class="card ts-intro">
     <p class="eyebrow">THEME STUDIO & QUIZ BRANDING</p>
     <h2>One place to customise your quiz</h2>
-    <p>Festival preset चुनें, colours बदलें, logo/background image URL डालें और quiz का नाम व दिखाई देने वाले text edit करें। Default branding बदलने के लिए Quiz Code की जरूरत नहीं है—इसे save करने पर public Player Portal और connected pages Firebase से update होंगे। केवल किसी एक quiz की अलग branding लगाने के लिए “Current quiz only” चुनकर उसका code डालें।</p>
+    <p>Festival preset चुनें, colours बदलें, logo/background image URL डालें और वेबसाइट पर दिखाई देने वाला text edit करें। Theme Studio से save करने पर global branding Firebase में save होगी और connected pages पर लागू होगी। Quiz बनाने या join करने के लिए Quiz Code की सुविधा अलग से बनी रहेगी।</p>
   </section>
   <div class="ts-grid">
     <div>
@@ -112,7 +112,6 @@
         </div>
         <div class="ts-actions">
           <button type="button" class="primary" id="tsSaveSelected">💾 Save as Default Branding</button>
-          <button type="button" id="tsUseDefault">Use Default Theme for Current Quiz</button>
         </div>
         <p id="tsStatus" class="notice ts-status" role="status" aria-live="polite">Load a saved theme or choose a preset to start.</p>
       </section>
@@ -143,6 +142,6 @@
   </div>
 </section>
 <script type="module" src="js/admin-auth.js?v=20261013-theme-studio-10"></script>
-<script type="module" src="js/theme-studio.js?v=20261013-global-theme-2"></script>
+<script type="module" src="js/theme-studio.js?v=20261013-global-theme-3"></script>
 </body>
 </html>
