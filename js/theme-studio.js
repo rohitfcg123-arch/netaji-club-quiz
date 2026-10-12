@@ -61,15 +61,21 @@ function setBusy(value) {
   busy = value;
   ["tsSaveSelected","tsLoadCurrent","tsLoadDefault","tsUseDefault","tsReset"].forEach(id => { if ($(id)) $(id).disabled = value; });
 }
-function ensureAdmin(user) {
-  if (!user) throw new Error("Admin login आवश्यक है। Admin Dashboard से login करें।");
-  return getIdTokenResult(user).then(async token => {
-    if (token.claims.firebase?.sign_in_provider !== "password") throw new Error("Theme Studio सिर्फ Admin password account से खुलता है।");
-    const snap = await getDoc(doc(db, "admins", user.uid));
-    if (!snap.exists() || snap.data()?.active !== true) throw new Error("इस account को active Admin permission नहीं है।");
-    authUser = user;
-  });
+async function ensureAdmin(user) {
+  if (!user || !user.email) throw new Error("Admin login with Google आवश्यक है।");
+  const token = await getIdTokenResult(user);
+  if (token.claims.firebase?.sign_in_provider !== "google.com") {
+    throw new Error("Theme Studio के लिए Google account से login करें; email/password login स्वीकार नहीं है।");
+  }
+  const email = String(user.email).trim().toLowerCase();
+  if (email === "rohit.fcg123@gmail.com") { authUser = user; return; }
+  const snap = await getDoc(doc(db, "approvedAdminEmails", email));
+  if (!snap.exists() || snap.data()?.active !== true || String(snap.data()?.email || "").toLowerCase() !== email) {
+    throw new Error("इस Google account को Admin approval नहीं मिला है। Root Admin से approval लें।");
+  }
+  authUser = user;
 }
+
 function collectForm() {
   const out = {
     ...currentBranding,
