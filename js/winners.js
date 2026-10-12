@@ -47,6 +47,23 @@ async function loadResults(){
  }catch(e){console.error(e);$("wPodiums").innerHTML='<div class="w-empty">⚠️ '+esc(e.message||"Results load नहीं हुए")+'</div>';$("wRows").innerHTML='<tr><td colspan="6">Results load नहीं हुए।</td></tr>';showMessage(e.message||"Firebase Rules और Quiz Code जाँचें।")}
  finally{$("wRefresh").disabled=false}
 }
-async function verify(user){const s=await getDoc(doc(db,"admins",user.uid));if(!s.exists()||s.data()?.active!==true)throw new Error("इस account को Admin permission नहीं मिली।");}
-onAuthStateChanged(auth,async user=>{if(!user){showMessage("Admin login आवश्यक है। Redirecting…");location.replace("admin.html");return}try{await verify(user);await loadResults()}catch(e){showMessage(e.message||"Admin verification failed.");try{await signOut(auth)}catch{}setTimeout(()=>location.replace("admin.html"),1200)}});
+async function verify(user){const s=await getDoc(doc(db,"admins",user.uid));if(!s.exists()||s.data()?.active!==true){const e=new Error("इस account को Admin permission नहीं मिली। Firestore में admins/{UID} document और active: true जाँचें।");e.code="admin/not-authorized";throw e;}}
+onAuthStateChanged(auth,async user=>{
+ if(!user){showMessage("Admin login आवश्यक है। Admin Login पर वापस जा रहे हैं…");location.replace("admin.html");return;}
+ try{
+  await verify(user);
+  await loadResults();
+ }catch(e){
+  console.error("Winners admin verification failed:",e);
+  if(e?.code==="admin/not-authorized"){
+   showMessage(e.message);
+   try{await signOut(auth)}catch(signOutError){console.error("Unauthorized session cleanup failed:",signOutError);}
+   setTimeout(()=>location.replace("admin.html"),1500);
+  }else{
+   // A network/Firestore error is not proof that the account is unauthorized.
+   // Keep Firebase session intact; rules still protect all results data.
+   showMessage("Admin session मौजूद है, लेकिन permission अभी verify नहीं हो सकी। Internet/Firestore Rules जाँचकर Refresh Results करें। Session logout नहीं किया गया। विवरण: "+(e?.message||"Unknown error"));
+  }
+ }
+});
 $("wRefresh").addEventListener("click",loadResults);$("wCelebrate").addEventListener("click",()=>{confetti();document.querySelector(".w-hero").animate([{transform:"scale(.98)",opacity:.75},{transform:"scale(1)",opacity:1}],{duration:650,easing:"ease-out"});document.querySelector(".w-stage").scrollIntoView({behavior:"smooth",block:"center"})});
