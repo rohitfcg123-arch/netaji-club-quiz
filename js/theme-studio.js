@@ -21,6 +21,7 @@ let defaultBranding = normalizeBranding(BRANDING_DEFAULTS);
 let authUser = null;
 let busy = false;
 let loadedCurrentQuizCode = "";
+let formDirty = false;
 
 function setStatus(message, type = "") {
   const el = $("tsStatus");
@@ -60,6 +61,7 @@ function collectForm() {
   return normalizeBranding(out);
 }
 function fillForm(input) {
+  formDirty = false;
   currentBranding = normalizeBranding(input || defaultBranding);
   Object.entries(COLOR_FIELDS).forEach(([key,id]) => $(id).value = currentBranding.colors[key]);
   Object.entries(TEXT_FIELDS).forEach(([key,id]) => $(id).value = currentBranding.text[key]);
@@ -105,6 +107,9 @@ async function loadDefault() {
   setStatus(snap.exists() ? "Saved default branding loaded from Firebase." : "No saved default yet; built-in Saraswati Puja theme loaded.", "success");
 }
 async function loadCurrentQuiz() {
+  if (formDirty) {
+    throw new Error("आपके कुछ बदलाव अभी सेव नहीं हुए हैं। बदलाव बचाने के लिए Apply to Current Quiz पर क्लिक करें। पुरानी सेटिंग्स फिर से लोड करने के लिए पहले बदलाव सेव करें या पेज रीफ्रेश करें।");
+  }
   const code = quizCode();
   if (!code) throw new Error("Current Quiz Code भरें। Admin Dashboard में Save Quiz करने के बाद यहाँ code डालें।");
   const snap = await getDoc(doc(db, "quizzes", code));
@@ -158,6 +163,7 @@ async function saveSelected() {
     const config = collectForm();
     if (selectedTarget() === "default") await saveDefault(config);
     else await saveCurrent(config);
+    formDirty = false;
   } catch (error) {
     console.error("Theme Studio save failed:", error);
     setStatus("❌ Save नहीं हुआ: " + (error?.message || String(error)), "error");
@@ -185,6 +191,7 @@ async function useDefaultForCurrent() {
 }
 
 document.querySelectorAll("[data-preset]").forEach(button => button.addEventListener("click", () => {
+  formDirty = true;
   const preset = BRANDING_PRESETS[button.dataset.preset];
   if (!preset) return;
   const old = collectForm();
@@ -196,9 +203,9 @@ document.querySelectorAll("[data-preset]").forEach(button => button.addEventList
   });
   setStatus(preset.label + " preset selected. Preview देखो और फिर save/apply करो.");
 }));
-Object.values(COLOR_FIELDS).forEach(id => $(id).addEventListener("input", () => { currentBranding = { ...collectForm(), preset: "custom" }; document.querySelectorAll("[data-preset]").forEach(b => b.classList.toggle("active", b.dataset.preset === "custom")); renderPreview(); }));
-Object.values(TEXT_FIELDS).forEach(id => $(id).addEventListener("input", renderPreview));
-["tsLogoUrl","tsBackgroundUrl","tsDecorations","tsAnimations"].forEach(id => $(id).addEventListener("input", renderPreview));
+Object.values(COLOR_FIELDS).forEach(id => $(id).addEventListener("input", () => { formDirty = true; currentBranding = { ...collectForm(), preset: "custom" }; document.querySelectorAll("[data-preset]").forEach(b => b.classList.toggle("active", b.dataset.preset === "custom")); renderPreview(); }));
+Object.values(TEXT_FIELDS).forEach(id => $(id).addEventListener("input", () => { formDirty = true; renderPreview(); }));
+["tsLogoUrl","tsBackgroundUrl","tsDecorations","tsAnimations"].forEach(id => $(id).addEventListener("input", () => { formDirty = true; renderPreview(); }));
 document.querySelectorAll('input[name="tsTarget"]').forEach(el => el.addEventListener("change", updateSaveLabel));
 $("tsSaveSelected").addEventListener("click", saveSelected);
 $("tsLoadDefault").addEventListener("click", async () => {
