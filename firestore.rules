@@ -74,12 +74,17 @@ service cloud.firestore {
       // Questions
       // -------------------------
       match /questions/{i} {
+        // A Google player can fetch only the currently active question.
+        // The live status and currentIndex are controlled by the admin portal.
+        // Avoid a timestamp gate here: it can block a valid question when the
+        // stored startAt/startedAt and question timer drift or differ in format.
         allow get: if isAdmin()
           || (
             googlePlayer()
             && quizExists(q)
             && quiz(q).status == 'live'
-            && request.time >= questionStart(q, int(i))
+            && quiz(q).currentIndex is int
+            && int(i) == quiz(q).currentIndex
           );
 
         allow list: if isAdmin();
