@@ -32,13 +32,16 @@ function restoreLocalDraft() {
   try {
     const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
     if (!draft || !draft.branding || Date.now() - Number(draft.savedAt || 0) > 604800000) return false;
-    if (draft.code) $("tsQuizCode").value = draft.code;
+    // Restore the user's work, but start in global/default mode. This lets
+    // admins update public portal branding without needing a quiz code.
+    $("tsQuizCode").value = "";
+    loadedCurrentQuizCode = "";
     fillForm(draft.branding);
-    const target = document.querySelector("input[name=tsTarget][value=" + (draft.target === "current" ? "current" : "default") + "]");
+    const target = document.querySelector('input[name="tsTarget"][value="default"]');
     if (target) target.checked = true;
     formDirty = true;
     updateSaveLabel();
-    setStatus("⚠️ पिछला draft वापस लाया गया है। स्थायी रूप से सेव करने के लिए Apply/Save पर क्लिक करें।");
+    setStatus("⚠️ पिछला draft वापस लाया गया है। Default branding चुनी गई है—Quiz Code के बिना public portal update करने के लिए Save करें। Specific quiz के लिए code डालकर “Current quiz only” चुनें।");
     return true;
   } catch { return false; }
 }
@@ -177,6 +180,7 @@ async function saveCurrent(config) {
     }},
     updatedAt: serverTimestamp()
   }, { merge: true });
+  clearLocalDraft();
   setStatus(loadedForRename ? ('✅ Branding and quiz name saved for "' + nextQuizName + '". Other quizzes are unchanged.') : ('✅ Branding saved for "' + nextQuizName + '". Existing quiz name was kept; load this quiz first to rename it.'), "success");
 }
 async function saveSelected() {
@@ -254,28 +258,18 @@ $("tsReset").addEventListener("click", () => {
 });
 document.querySelectorAll('input[name="tsTarget"]').forEach(el => el.addEventListener("change", updateSaveLabel));
 
-try {
-  const local = JSON.parse(localStorage.getItem("netajiQuizLiveState") || "{}");
-  if (local.quiz?.id) $("tsQuizCode").value = String(local.quiz.id).toUpperCase();
-} catch {}
+// Do not silently restore a previous quiz code here. Theme Studio opens in
+// global/default mode so admins can change the public portal theme without a code.
+// A specific quiz is loaded only when "Load Current Quiz" is explicitly clicked.
+$("tsQuizCode").value = "";
 fillForm(BRANDING_DEFAULTS);
 onAuthStateChanged(auth, user => {
   if (!user) { authUser = null; return; }
   ensureAdmin(user).then(async () => {
     const restoredDraft = restoreLocalDraft();
     if (restoredDraft) return;
-    const lastQuizCode = String(localStorage.getItem("themeStudioLastQuizCode") || "").trim().toUpperCase();
-    const code = quizCode() || lastQuizCode;
-    if (code) {
-      $("tsQuizCode").value = code;
-      try {
-        await loadDefault();
-        await loadCurrentQuiz();
-        return;
-      } catch (error) {
-        console.warn("Could not restore last Theme Studio quiz; loading default branding instead.", error);
-      }
-    }
+    document.querySelector('input[name="tsTarget"][value="default"]').checked = true;
+    updateSaveLabel();
     $("tsStatus").textContent = "Admin verified. Loading saved default branding…";
     await loadDefault();
   }).catch(error => {
