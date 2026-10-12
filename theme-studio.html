@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#fff4d8">
+<title>Theme Studio | Netaji Club Quiz</title>
+<link rel="stylesheet" href="css/styles.css?v=20261013-theme-studio-1">
+<style>
+.ts-page{max-width:1250px}.ts-intro{background:linear-gradient(135deg,#fff5d9,#fffdf7 58%,#e9efff)}.ts-intro h2{color:#862127;font-size:clamp(25px,4vw,38px);margin:4px 0 10px}.ts-intro p{max-width:850px;color:#735b47;line-height:1.6}
+.ts-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,.9fr);gap:18px;align-items:start}.ts-card{background:#fffdf7;border:1px solid #e4ce94;border-radius:20px;padding:20px;margin:18px 0;box-shadow:0 8px 24px #7d4a1510}.ts-card h2,.ts-card h3{color:#862127;margin-top:0}.ts-card h3{margin-bottom:12px}
+.ts-presets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ts-preset{display:flex;align-items:center;gap:10px;text-align:left;border:1px solid #ddd4c0;border-radius:14px;padding:12px;background:#fff;min-height:68px;color:#312d2b}.ts-preset.active{border:2px solid #8c2026;box-shadow:0 0 0 3px #8c202614}.ts-swatch{width:42px;height:42px;border-radius:12px;flex:0 0 42px;border:1px solid #0002;background:linear-gradient(135deg,var(--p1) 0 45%,var(--p2) 45% 70%,var(--p3) 70%)}.ts-preset strong{display:block;font-size:14px}.ts-preset small{color:#806d5a;font-size:12px}
+.ts-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.ts-fields label{display:block;font-size:13px;font-weight:800;color:#60442d}.ts-fields input:not([type=color]):not([type=checkbox]),.ts-fields select,.ts-fields textarea,.ts-code-row input{display:block;width:100%;margin-top:6px;padding:11px 12px;border:1px solid #d9cba8;border-radius:11px;background:#fff;font:inherit;color:#292929}.ts-fields input[type=color]{display:block;width:100%;height:43px;margin-top:6px;border:1px solid #d9cba8;border-radius:10px;background:white;padding:4px}.ts-fields .full{grid-column:1/-1}.ts-fields textarea{min-height:80px;resize:vertical}.ts-section-label{margin:22px 0 12px;font-weight:900;color:#862127;border-bottom:1px solid #eadbb5;padding-bottom:8px}
+.ts-code-row{display:flex;gap:8px;align-items:center}.ts-code-row input{flex:1;min-width:0;margin:0}.ts-targets{display:flex;flex-wrap:wrap;gap:10px}.ts-target{display:flex;align-items:center;gap:8px;padding:11px 14px;background:#fff;border:1px solid #ded1b5;border-radius:12px;font-weight:800}.ts-target input{accent-color:#8c2026;width:18px;height:18px}
+.ts-toggle-row{display:flex;flex-wrap:wrap;gap:14px}.ts-toggle{display:flex;align-items:center;gap:8px;font-weight:750}.ts-toggle input{width:19px;height:19px;accent-color:#168652}
+.ts-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}.ts-actions button{flex:1 1 155px}.ts-status{min-height:44px;line-height:1.5}.ts-status.error{background:#ffe5e5;color:#8c2026}.ts-status.success{background:#dff8e8;color:#176638}
+.ts-preview-shell{background:#07182c;border-radius:20px;padding:14px;color:#fff;box-shadow:0 12px 32px #0002}.theme-preview{--theme-primary:#9c5f12;--theme-accent:#c88913;--theme-background:#fff9e8;--theme-surface:#fffef8;--theme-text:#51331b;--theme-header:#fff0bd;--theme-border:#e7d49c;--theme-secondary:#f6ce4f;overflow:hidden;border-radius:15px;padding:15px;background:var(--theme-background);color:var(--theme-text);background-image:var(--theme-background-image);background-size:cover;background-position:center}
+.theme-preview .ts-prev-header{display:flex;align-items:center;gap:10px;padding:10px;background:var(--theme-header);border-radius:12px;color:var(--theme-text)}.theme-preview .ts-prev-logo{display:grid;place-items:center;width:44px;height:44px;flex:0 0 44px;border-radius:50%;background:var(--theme-primary);color:#fff;font-weight:950}.theme-preview .ts-prev-title{font-size:clamp(15px,2vw,22px);font-weight:950}.theme-preview .ts-prev-tagline{font-size:11px}.theme-preview .ts-prev-pill{margin-left:auto;padding:6px 10px;background:var(--theme-secondary);color:var(--theme-text);border-radius:999px;font-size:10px;font-weight:900;white-space:nowrap}
+.theme-preview .ts-prev-question{margin:12px 0;padding:15px;border:1px solid var(--theme-border);border-radius:12px;background:var(--theme-surface);color:var(--theme-text)}.theme-preview .ts-prev-question small{color:var(--theme-accent);font-weight:900}.theme-preview .ts-prev-question h3{color:var(--theme-primary);margin:7px 0 0;font-size:clamp(16px,2vw,23px);overflow-wrap:anywhere}
+.theme-preview .ts-prev-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.theme-preview .ts-prev-options span{display:block;padding:11px 9px;background:var(--theme-primary);color:#fff;border-radius:9px;font-weight:900;font-size:13px;overflow-wrap:anywhere}.theme-preview .ts-prev-options span:nth-child(2){background:#087a4a}.theme-preview .ts-prev-options span:nth-child(3){background:#bf2435}.theme-preview .ts-prev-options span:nth-child(4){background:var(--theme-secondary);color:#251b06}
+.theme-preview .ts-prev-ranking{margin-top:12px;padding:10px;background:var(--theme-header);border:1px solid var(--theme-border);border-radius:10px;color:var(--theme-text);font-weight:950}.ts-preview-note{color:#a9bfd6;font-size:12px;line-height:1.5;margin:10px 2px 0}
+#adminAuthGate{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:18px;background:rgba(255,248,232,.98);overflow:auto}
+#adminAuthGate .auth-card{width:min(100%,440px);background:#fffdf6;border:1px solid #e4ce94;border-radius:22px;padding:26px;box-shadow:0 12px 42px #552d2220}
+#adminAuthGate h2{color:#862127;margin-top:0}#adminAuthGate input{display:block;width:100%;padding:13px;margin:8px 0;border:1px solid #d9cba8;border-radius:10px;font:inherit}
+#adminAuthGate button{width:100%;margin-top:10px}#adminAuthMessage{white-space:pre-wrap;overflow-wrap:anywhere}.auth-small{font-size:13px;color:#876d58}
+@media(max-width:900px){.ts-grid{grid-template-columns:1fr}.ts-preview-card{order:-1}}
+@media(max-width:560px){.ts-card{padding:14px}.ts-fields{grid-template-columns:1fr}.ts-fields .full{grid-column:auto}.ts-presets{grid-template-columns:1fr}.ts-code-row{flex-direction:column;align-items:stretch}.ts-preview-shell{padding:8px}.theme-preview{padding:9px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">NC</div>
+  <div><small>DESIGN CONTROL CENTRE</small><h1>Theme Studio</h1><p>Festival themes • Quiz branding • Live preview</p></div>
+  <a class="link" href="admin.html">← Admin Dashboard</a>
+  <button type="button" id="adminLogout" class="link" style="border:1px solid #d9cba8;background:#fff8e8;border-radius:10px;padding:9px 12px;cursor:pointer">Logout</button>
+</header>
+<main class="ts-page">
+  <section class="card ts-intro">
+    <p class="eyebrow">THEME STUDIO & QUIZ BRANDING</p>
+    <h2>One place to customise your quiz</h2>
+    <p>Festival preset चुनें, colours बदलें, logo/background image URL डालें और quiz का नाम व दिखाई देने वाले text edit करें। Default branding सभी नए quizzes के लिए save कर सकते हैं या सिर्फ current quiz पर अलग branding लगा सकते हैं। Projector और participant pages Firebase से updates receive करेंगे।</p>
+  </section>
+  <div class="ts-grid">
+    <div>
+      <section class="ts-card">
+        <h2>1. Choose a festival theme</h2>
+        <div id="tsPresets" class="ts-presets">
+          <button class="ts-preset" type="button" data-preset="netaji"><span class="ts-swatch" style="--p1:#8c2026;--p2:#c18a26;--p3:#fff2d2"></span><span><strong>Netaji Club</strong><small>Original branding</small></span></button>
+          <button class="ts-preset" type="button" data-preset="independence"><span class="ts-swatch" style="--p1:#174889;--p2:#e87924;--p3:#138808"></span><span><strong>Independence Day</strong><small>Tricolour-inspired</small></span></button>
+          <button class="ts-preset" type="button" data-preset="diwali"><span class="ts-swatch" style="--p1:#24163b;--p2:#ffcc54;--p3:#a675ff"></span><span><strong>Diwali</strong><small>Night lights & gold</small></span></button>
+          <button class="ts-preset" type="button" data-preset="saraswati"><span class="ts-swatch" style="--p1:#9c5f12;--p2:#f6ce4f;--p3:#fff0bd"></span><span><strong>Saraswati Puja</strong><small>Yellow & floral feel</small></span></button>
+          <button class="ts-preset" type="button" data-preset="kali"><span class="ts-swatch" style="--p1:#100b12;--p2:#db3045;--p3:#f4c65a"></span><span><strong>Kali Puja</strong><small>Dark red & gold</small></span></button>
+          <button class="ts-preset" type="button" data-preset="durga"><span class="ts-swatch" style="--p1:#b52a39;--p2:#dca44d;--p3:#fff0eb"></span><span><strong>Durga Puja</strong><small>Red, white & gold</small></span></button>
+          <button class="ts-preset" type="button" data-preset="custom"><span class="ts-swatch" style="--p1:#5145cd;--p2:#e09b37;--p3:#22a58c"></span><span><strong>Custom</strong><small>Your own palette</small></span></button>
+        </div>
+        <div class="ts-section-label">Where should this branding be saved?</div>
+        <div class="ts-targets">
+          <label class="ts-target"><input type="radio" name="tsTarget" value="default" checked> Default branding</label>
+          <label class="ts-target"><input type="radio" name="tsTarget" value="current"> Current quiz only</label>
+        </div>
+        <label class="category-filter-label" style="margin-top:15px">Current Quiz Code
+          <div class="ts-code-row"><input id="tsQuizCode" maxlength="32" placeholder="e.g. NC776SOV"><button type="button" id="tsLoadCurrent">Load Current Quiz</button></div>
+        </label>
+        <div class="ts-actions">
+          <button type="button" id="tsLoadDefault">Load Saved Default</button>
+          <button type="button" id="tsReset">Reset Form</button>
+        </div>
+      </section>
+      <section class="ts-card">
+        <h2>2. Colours, logo & background</h2>
+        <div class="ts-fields">
+          <label>Primary colour<input id="tsPrimary" type="color" value="#9c5f12"></label>
+          <label>Accent colour<input id="tsAccent" type="color" value="#c88913"></label>
+          <label>Page background<input id="tsBackground" type="color" value="#fff9e8"></label>
+          <label>Card/surface colour<input id="tsSurface" type="color" value="#fffef8"></label>
+          <label>Text colour<input id="tsText" type="color" value="#51331b"></label>
+          <label>Header colour<input id="tsHeader" type="color" value="#fff0bd"></label>
+          <label>Border colour<input id="tsBorder" type="color" value="#e7d49c"></label>
+          <label>Secondary colour<input id="tsSecondary" type="color" value="#f6ce4f"></label>
+          <label class="full">Logo image URL (HTTPS)
+            <input id="tsLogoUrl" type="url" placeholder="https://example.com/your-logo.png">
+          </label>
+          <label class="full">Background image URL (HTTPS)
+            <input id="tsBackgroundUrl" type="url" placeholder="https://example.com/festival-background.jpg">
+          </label>
+        </div>
+        <p class="muted">Image URL public/reachable hona chahiye. Images Firebase mein upload nahi ho rahe; ye fields hosted image URLs use karte hain.</p>
+      </section>
+      <section class="ts-card">
+        <h2>3. Text & quiz name</h2>
+        <p class="muted">Fields blank chhodne par bhi system safe default text use karega. Current quiz save karte waqt Quiz Name Firebase ke current quiz name ko bhi update karega.</p>
+        <div class="ts-fields">
+          <label>Club / organisation name<input id="txClubName" maxlength="100"></label>
+          <label>Header label<input id="txCompetitionLabel" maxlength="100"></label>
+          <label class="full">Tagline<input id="txTagline" maxlength="160"></label>
+          <label>Default Quiz Name<input id="txDefaultQuizName" maxlength="120"></label>
+          <label>Welcome heading<input id="txWelcomeHeading" maxlength="160"></label>
+          <label class="full">Welcome description<textarea id="txWelcomeText" maxlength="180"></textarea></label>
+          <label>Login heading<input id="txLoginHeading" maxlength="100"></label>
+          <label class="full">Login description<textarea id="txLoginText" maxlength="180"></textarea></label>
+          <label>Join page heading<input id="txJoinHeading" maxlength="100"></label>
+          <label class="full">Join page description<textarea id="txJoinText" maxlength="180"></textarea></label>
+          <label class="full">Waiting screen text<input id="txWaitingText" maxlength="160"></label>
+          <label>Ranking heading<input id="txRankingHeading" maxlength="100"></label>
+          <label class="full">Ranking subtitle<input id="txRankingSubtitle" maxlength="160"></label>
+          <label>Results heading<input id="txResultsHeading" maxlength="100"></label>
+          <label>Winners heading<input id="txWinnersHeading" maxlength="160"></label>
+          <label class="full">Winners subtitle<input id="txWinnersSubtitle" maxlength="180"></label>
+          <label class="full">Footer text<input id="txFooterText" maxlength="160"></label>
+        </div>
+      </section>
+      <section class="ts-card">
+        <h2>4. Decorative effects</h2>
+        <div class="ts-toggle-row">
+          <label class="ts-toggle"><input id="tsDecorations" type="checkbox" checked> Festival decorations</label>
+          <label class="ts-toggle"><input id="tsAnimations" type="checkbox" checked> Animations</label>
+        </div>
+        <div class="ts-actions">
+          <button type="button" class="primary" id="tsSaveDefault">💾 Save as Default Branding</button>
+          <button type="button" class="primary" id="tsSaveCurrent">🚀 Apply to Current Quiz</button>
+          <button type="button" id="tsUseDefault">Use Default Theme for Current Quiz</button>
+        </div>
+        <p id="tsStatus" class="notice ts-status" role="status" aria-live="polite">Load a saved theme or choose a preset to start.</p>
+      </section>
+    </div>
+    <aside class="ts-card ts-preview-card">
+      <h2>Live Preview</h2>
+      <div class="ts-preview-shell">
+        <div class="theme-preview" id="themePreview">
+          <header class="ts-prev-header">
+            <div class="ts-prev-logo" data-brand-logo data-brand-logo-fallback="NC">NC</div>
+            <div style="min-width:0"><div class="ts-prev-title" data-brand-text="clubName">नेताजी क्लब</div><div class="ts-prev-tagline" data-brand-text="tagline">ज्ञान • संस्कृति • एकता</div></div>
+            <span class="ts-prev-pill" data-brand-text="competitionLabel">QUIZ COMPETITION</span>
+          </header>
+          <section class="ts-prev-question"><small>QUESTION 1 OF 10</small><h3 id="tsPreviewQuizName">Saraswati Puja Quiz</h3><p id="tsPreviewWelcome">सरस्वती पूजा क्विज़ प्रतियोगिता</p><p id="tsPreviewDescription" style="margin-bottom:0;font-size:13px">अपनी जानकारी परखें, दोस्तों के साथ खेलें और विजेता बनें।</p></section>
+          <div class="ts-prev-options"><span>A. Option A</span><span>B. Option B</span><span>C. Option C</span><span>D. Option D</span></div>
+          <div class="ts-prev-ranking" data-brand-text="rankingHeading">LIVE RANKING</div>
+          <p id="tsPreviewFooter" style="margin:10px 0 0;font-size:11px" data-brand-text="footerText">ज्ञान • संस्कृति • एकता</p>
+        </div>
+      </div>
+      <p class="ts-preview-note">Preview is illustrative. It does not start or alter a live quiz. Saving a default updates connected public quiz screens; a current-quiz theme takes precedence for that quiz only.</p>
+    </aside>
+  </div>
+</main>
+<section id="adminAuthGate" aria-modal="true" role="dialog" aria-labelledby="adminAuthTitle">
+  <div class="auth-card"><h2 id="adminAuthTitle">Admin Login</h2><p>नेताजी क्लब क्विज़ — केवल अधिकृत Admin</p>
+    <form id="adminLoginForm"><label for="adminEmail">Email address</label><input id="adminEmail" type="email" autocomplete="username" required placeholder="Admin email"><label for="adminPassword">Password</label><input id="adminPassword" type="password" autocomplete="current-password" required placeholder="Password"><button class="primary" id="adminLoginButton" type="submit">Login securely</button></form>
+    <p id="adminAuthMessage" class="notice" role="status" aria-live="polite">Firebase से Admin permission जाँची जाएगी।</p><p class="auth-small">सिर्फ वही account खुलेगा जिसका UID Firestore के admins collection में active: true है।</p>
+  </div>
+</section>
+<script type="module" src="js/admin-auth.js?v=20261013-theme-studio-1"></script>
+<script type="module" src="js/theme-studio.js?v=20261013-theme-studio-1"></script>
+</body>
+</html>
