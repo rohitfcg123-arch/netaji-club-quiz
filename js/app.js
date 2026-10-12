@@ -65,13 +65,16 @@ if (hostMode) {
     back.addEventListener("click", event => {
       try {
         const returnFlag = sessionStorage.getItem("ncAdminReviewReturn") === "1";
-        const fromAdmin = document.referrer && new URL(document.referrer).origin === location.origin && new URL(document.referrer).pathname.endsWith("/admin.html");
-        if (returnFlag && fromAdmin && history.length > 1) {
+        // document.referrer can be empty/changed on mobile browsers even when this
+        // page was opened from Admin. The same-tab session flag is our navigation
+        // hint; it is NOT an authentication grant. Return to the existing dashboard
+        // document so its live state and Firebase-authenticated session are preserved.
+        if (returnFlag && history.length > 1) {
           event.preventDefault();
           sessionStorage.removeItem("ncAdminReviewReturn");
-          history.back();
+          history.go(-1);
         } else {
-          // Directly opened review pages still have a safe, normal Admin Portal link.
+          // Directly opened review pages still use the normal Admin Portal link.
           sessionStorage.removeItem("ncAdminReviewReturn");
         }
       } catch (error) {
