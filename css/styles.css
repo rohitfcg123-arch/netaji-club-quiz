@@ -31,3 +31,33 @@ body.host-mode .hero{display:none!important}body.host-mode #game{display:block}b
 /* Make Google login progress and errors visible on mobile */
 .auth-status{margin:14px auto 0;max-width:520px;min-height:0;white-space:normal;overflow-wrap:anywhere;font-size:15px;line-height:1.55}
 #googleLoginBtn:disabled{opacity:.8;cursor:wait}
+
+
+/* Language selector polish on the player join screen */
+.join-form #quizLanguage {
+  display: block;
+  width: 100%;
+  min-height: 52px;
+  margin: 8px 0 18px;
+  padding: 12px 44px 12px 16px;
+  border: 1.5px solid #d9cba8;
+  border-radius: 12px;
+  background-color: #edf2ff;
+  color: #552d22;
+  font: inherit;
+  font-size: 17px;
+  line-height: 1.4;
+  cursor: pointer;
+  appearance: auto;
+  -webkit-appearance: menulist;
+  box-shadow: 0 2px 5px rgba(85,45,34,.06);
+}
+.join-form #quizLanguage:focus {
+  outline: 2px solid #a87a24;
+  outline-offset: 2px;
+  border-color: #a87a24;
+}
+.join-form label[for="quizLanguage"] {
+  margin: 18px 0 6px;
+  line-height: 1.4;
+}
