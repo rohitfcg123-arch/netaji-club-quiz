@@ -1,7 +1,6 @@
 import { auth, db } from "./firebase.js";
 import {
-  createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut,
-  onAuthStateChanged, updateProfile, setPersistence, browserLocalPersistence,
+  onAuthStateChanged, signOut, setPersistence, browserLocalPersistence,
   GoogleAuthProvider, signInWithRedirect, getRedirectResult
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {
@@ -64,9 +63,22 @@ if (hostMode) {
   if (requestedCode) startListening(requestedCode);
   else waiting("Quiz Code नहीं मिला।");
 } else {
-  // Login happens here. After Firebase confirms authentication, take players
-  // to a dedicated page that contains only their name and Quiz Code.
+  // Players must authenticate with Google only. Password-based sessions from an
+  // older version are signed out and cannot enter the player portal.
+  const isGoogleUser = user => !!user?.providerData?.some(p => p.providerId === "google.com");
+
+  async function routeAuthenticatedUser(user) {
+    if (!user) return;
+    if (!isGoogleUser(user)) {
+      try { await signOut(auth); } catch (error) { console.error("Sign out non-Google player:", error); }
+      authNotice("Player Portal में केवल Continue with Google से Login कर सकते हैं।");
+      return;
+    }
+    if (redirectCheckFinished) location.replace("join.html");
+  }
+
   $("googleLoginBtn").addEventListener("click", async () => {
+    $("googleLoginBtn").disabled = true;
     authNotice("Google Login खोला जा रहा है…");
     try {
       await setPersistence(auth, browserLocalPersistence);
@@ -76,11 +88,10 @@ if (hostMode) {
     } catch (err) {
       console.error("Google Login:", err);
       authNotice(authError(err));
+      $("googleLoginBtn").disabled = false;
     }
   });
 
-  // Wait until Firebase has processed the Google redirect before navigating away.
-  // This prevents the auth-state callback from interrupting redirect-result handling.
   let redirectCheckFinished = false;
   getRedirectResult(auth).then(result => {
     if (result?.user) authNotice("Google Login सफल हुआ। आगे बढ़ रहे हैं…");
@@ -89,46 +100,14 @@ if (hostMode) {
     authNotice(authError(err));
   }).finally(() => {
     redirectCheckFinished = true;
-    if (auth.currentUser) location.replace("join.html");
-  });
-
-  $("authForm").addEventListener("submit", async e => {
-    e.preventDefault();
-    authNotice("Login हो रहा है…");
-    try {
-      await setPersistence(auth, browserLocalPersistence);
-      await signInWithEmailAndPassword(auth, $("authEmail").value.trim(), $("authPassword").value);
-      authNotice("Login सफल हुआ। आगे बढ़ रहे हैं…");
-    } catch (err) {
-      console.error(err);
-      authNotice(authError(err));
-    }
-  });
-
-  $("registerBtn").addEventListener("click", async () => {
-    const name = $("authName").value.trim();
-    const email = $("authEmail").value.trim();
-    const password = $("authPassword").value;
-    if (!name) { authNotice("अकाउंट बनाने के लिए अपना नाम भरें।"); return; }
-    if (name.length > 40) { authNotice("नाम 40 अक्षरों से छोटा रखें।"); return; }
-    authNotice("अकाउंट बनाया जा रहा है…");
-    try {
-      await setPersistence(auth, browserLocalPersistence);
-      localStorage.setItem("ncQuizPendingName", name);
-      const credential = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(credential.user, { displayName: name });
-      authNotice("अकाउंट बन गया! आगे बढ़ रहे हैं…");
-    } catch (err) {
-      console.error(err);
-      authNotice(authError(err));
-    }
+    if (auth.currentUser) void routeAuthenticatedUser(auth.currentUser);
   });
 
   onAuthStateChanged(auth, user => {
     if (!user) return;
-    const typedName = $("authName")?.value.trim();
+    const typedName = localStorage.getItem("ncQuizPendingName");
     if (typedName && !user.displayName) localStorage.setItem("ncQuizPendingName", typedName);
-    if (redirectCheckFinished) location.replace("join.html");
+    void routeAuthenticatedUser(user);
   });
 }
 function startListening(code) {
@@ -191,7 +170,7 @@ function startListening(code) {
         updateTimer();
       }, e => {
         console.error("Question listener:", e);
-        waiting("Question access error: Email से Login और Firebase Rules जाँचें।");
+        waiting("Question access error: Google Login और Firebase Rules जाँचें।");
       });
     } else updateTimer();
   }, e => {
