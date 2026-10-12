@@ -111,7 +111,16 @@ service cloud.firestore {
         // The live status and currentIndex are controlled by the admin portal.
         // Avoid a timestamp gate here: it can block a valid question when the
         // stored startAt/startedAt and question timer drift or differ in format.
+        // Public Review screen may read only the currently active question.
+        // Correct answer keys remain in the separate admin-only /keys collection.
         allow get: if isAdmin()
+          || (
+            quizExists(q)
+            && quiz(q).status == 'live'
+            && quiz(q).currentIndex is int
+            && int(i) == quiz(q).currentIndex
+            && request.auth == null
+          )
           || (
             googlePlayer()
             && quizExists(q)
