@@ -26,3 +26,8 @@ body.host-mode .hero{display:none!important}body.host-mode #game{display:block}b
 /* Google-only player login */
 #authPanel .google-login{display:block;max-width:480px;margin:22px auto 10px}
 #authPanel .notice:empty{display:none}
+
+
+/* Make Google login progress and errors visible on mobile */
+.auth-status{margin:14px auto 0;max-width:520px;min-height:0;white-space:normal;overflow-wrap:anywhere;font-size:15px;line-height:1.55}
+#googleLoginBtn:disabled{opacity:.8;cursor:wait}
