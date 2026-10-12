@@ -1,5 +1,7 @@
 import { auth, db } from "./firebase.js";
 import {
+  browserLocalPersistence,
+  setPersistence,
   onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup,
   getIdTokenResult
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
@@ -328,7 +330,10 @@ if (hostMode) {
     hostMessage("Quiz Code नहीं मिला। Admin Portal से Review Quiz खोलें।", "error");
     renderHostWaiting("Quiz Code missing");
   } else {
-    onAuthStateChanged(auth, user => {
+    // Match Admin Portal's explicit local persistence before resolving the host session.
+    // Do not bypass Firestore Rules; the same password-admin + active allowlist checks still run.
+    setPersistence(auth, browserLocalPersistence).then(() => {
+      onAuthStateChanged(auth, user => {
       if (!user) {
         hostAdminVerified = false;
         hostDataUnsubs.forEach(fn => fn());
@@ -353,6 +358,11 @@ if (hostMode) {
         renderHostWaiting("Admin verification required");
         $("options").innerHTML = '<div class="host-board-empty host-option-error">Admin verification required</div>';
       });
+    });
+    }).catch(error => {
+      console.error("Could not restore persistent Admin session for review screen:", error);
+      hostMessage("Admin session restore failed. Admin Portal mein login karke Review Quiz dobara kholein.", "error");
+      renderHostWaiting("Admin session restore failed");
     });
   }
 } else {
