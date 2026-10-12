@@ -70,7 +70,7 @@ service cloud.firestore {
       match /questions/{i} {
         allow get: if isAdmin()
           || (
-            passwordUser()
+            signedIn()
             && quizExists(q)
             && quiz(q).status == 'live'
             && request.time >= questionStart(q, int(i))
@@ -80,9 +80,17 @@ service cloud.firestore {
         allow create, update, delete: if isAdmin();
       }
 
-      // Answer keys are never readable by players.
+      // Players can read only the key for a question after their one-time answer
+      // has been saved. This enables immediate correct/incorrect feedback without
+      // exposing future answer keys before the player locks in a choice.
       match /keys/{i} {
-        allow read, write: if isAdmin();
+        allow get: if isAdmin()
+          || (
+            signedIn()
+            && exists(/databases/$(database)/documents/quizzes/$(q)/answers/$(request.auth.uid + '_' + string(int(i))))
+          );
+        allow list: if isAdmin();
+        allow create, update, delete: if isAdmin();
       }
 
       // -------------------------
@@ -92,11 +100,11 @@ service cloud.firestore {
       // -------------------------
       match /players/{uid} {
         allow get: if isAdmin()
-          || (passwordUser() && request.auth.uid == uid);
+          || (signedIn() && request.auth.uid == uid);
 
         allow list: if isAdmin();
 
-        allow create: if passwordUser()
+        allow create: if signedIn()
           && request.auth.uid == uid
           && request.resource.data.keys().hasOnly(['name', 'joinedAt'])
           && request.resource.data.name is string
@@ -116,12 +124,12 @@ service cloud.firestore {
       match /answers/{aid} {
         // Players may read only their own submitted answer; admins can review all.
         allow get, list: if isAdmin()
-          || (passwordUser() && resource.data.uid == request.auth.uid);
+          || (signedIn() && resource.data.uid == request.auth.uid);
 
         // Allow one answer per authenticated player for the currently live question.
         // Do not depend on timestamp arithmetic here: it can cause valid answers
         // to be rejected when the client/server clocks or question timer differ.
-        allow create: if passwordUser()
+        allow create: if signedIn()
           && request.resource.data.keys().hasOnly(['uid', 'q', 'sel', 'at', 'elapsedMs'])
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.q is int
