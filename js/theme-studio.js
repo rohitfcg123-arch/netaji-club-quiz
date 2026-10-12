@@ -6,9 +6,9 @@ import { BRANDING_DEFAULTS, BRANDING_PRESETS, normalizeBranding, applyBranding }
 const $ = id => document.getElementById(id);
 const TEXT_FIELDS = {
   clubName:"txClubName", competitionLabel:"txCompetitionLabel", tagline:"txTagline",
-  defaultQuizName:"txDefaultQuizName", welcomeHeading:"txWelcomeHeading", welcomeText:"txWelcomeText",
+  defaultQuizName:"txDefaultQuizName", roundName:"txRoundName", welcomeHeading:"txWelcomeHeading", welcomeText:"txWelcomeText",
   loginHeading:"txLoginHeading", loginText:"txLoginText", joinHeading:"txJoinHeading", joinText:"txJoinText",
-  waitingText:"txWaitingText", rankingHeading:"txRankingHeading", rankingSubtitle:"txRankingSubtitle",
+  waitingText:"txWaitingText", rankingHeading:"txRankingHeading", participantsLabel:"txParticipantsLabel", progressLabel:"txProgressLabel", rankingSubtitle:"txRankingSubtitle",
   resultsHeading:"txResultsHeading", winnersHeading:"txWinnersHeading", winnersSubtitle:"txWinnersSubtitle",
   footerText:"txFooterText"
 };
