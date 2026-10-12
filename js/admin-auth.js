@@ -1,6 +1,6 @@
 import { auth, db } from "./firebase.js";
 import {
-  onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut,
+  onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, getIdTokenResult,
   setPersistence, browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
@@ -28,6 +28,8 @@ function normalizedEmail(user) { return String(user?.email || "").trim().toLower
 
 async function verifyAdmin(user) {
   if (!user || !user.email) throw new Error("Google account ka email available nahi hai.");
+  const token = await getIdTokenResult(user);
+  if (token.claims.firebase?.sign_in_provider !== "google.com") throw new Error("Email/password login band hai. Continue with Google use karein.");
   const email = normalizedEmail(user);
   if (email === ROOT_ADMIN) return;
   const snap = await getDoc(doc(db, "approvedAdminEmails", email));
