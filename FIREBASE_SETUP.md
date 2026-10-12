@@ -34,3 +34,14 @@ The Admin and Player pages now use Cloud Firestore for quiz metadata and questio
 GitHub commits do NOT publish rules to Firebase automatically. In Firebase Console → Firestore Database → Rules, replace the current rules with the contents of `firestore.rules` in this repository and click **Publish**. The existing `admins/{UID}` document must have Boolean `active: true` for the admin account.
 
 The live quiz uses Firestore (database), not Firebase Storage (file storage). Do not put live quiz state or answer keys in a publicly readable document. The current client-side version supports live quiz/question display; secure answer submission and server-side scoring still require a trusted backend/Cloud Function.
+
+## Theme Studio & custom branding (13 Oct 2026)
+The Admin Dashboard now links to `theme-studio.html`. It can save either a default branding preset for new quizzes or a per-quiz override:
+- `siteSettings/branding`: default preset, palette, configurable headings/copy, external logo/background image URLs, and effects.
+- `quizzes/{CODE}.settings.branding`: optional override for one quiz; the quiz's display name is saved to `quizzes/{CODE}.name`.
+- `js/branding.js`: shared theme resolver and live subscription used by the landing page, participant page, projector view, and winners screen.
+
+### Required Rules update for Theme Studio
+The `firestore.rules` file includes a least-privilege `siteSettings/branding` rule: anyone can read only that one branding document, while writes require the existing password-provider Admin allowlist (`admins/{UID}.active == true`). Other `siteSettings` documents remain denied. Since this repository deploys GitHub Pages rather than Firestore Rules, publish the current repository's `firestore.rules` manually in Firebase Console → Firestore Database → Rules → Publish before using Theme Studio. Do not loosen the existing quiz/player/answer rules.
+
+The logo and background fields currently accept public HTTP(S) image URLs; they do not upload files to Firebase Storage. If a save reports `permission-denied`, confirm that the latest rules were published and that the session is an active Admin account.
