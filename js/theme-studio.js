@@ -207,7 +207,13 @@ async function saveDefault(config) {
 }
 async function saveCurrent(config) {
   const code = quizCode();
-  if (!code) throw new Error("Current Quiz Code भरें या Admin Dashboard से code copy करें।");
+  if (!code) {
+    document.querySelector('input[name="tsTarget"][value="default"]').checked = true;
+    updateSaveLabel();
+    await saveDefault(config);
+    setStatus("✅ कोई Quiz Code नहीं दिया गया, इसलिए theme Default Branding में save हुई। किसी specific quiz के लिए उसका code डालें।", "success");
+    return;
+  }
   const quizRef = doc(db, "quizzes", code);
   const snap = await getDoc(quizRef);
   if (!snap.exists()) throw new Error("Quiz " + code + " Firebase में नहीं मिला। पहले Admin Dashboard में Save Quiz करें।");
@@ -285,7 +291,13 @@ function applyPresetToForm(presetKey) {
 }
 document.querySelectorAll("[data-preset]").forEach(button => button.addEventListener("click", () => {
   const presetKey = button.dataset.preset;
-  if (formDirty && selectedTarget() === "current" && !window.confirm("Theme बदलने से इस form के unsaved changes replace हो सकते हैं। क्या आगे बढ़ना है?")) return;
+  if (formDirty && !window.confirm("Theme बदलने से form के unsaved changes replace हो सकते हैं। क्या आगे बढ़ना है?")) return;
+  // Festival presets and Custom are usable without a quiz code: if no code is
+  // entered, automatically select global/default branding as the save target.
+  if (!quizCode()) {
+    const defaultTarget = document.querySelector('input[name="tsTarget"][value="default"]');
+    if (defaultTarget) defaultTarget.checked = true;
+  }
   applyPresetToForm(presetKey);
 }));
 function allowFestivalEdit() {
