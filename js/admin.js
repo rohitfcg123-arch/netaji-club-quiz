@@ -5,6 +5,7 @@ let questions=[],bankQuestions=[],current=0,quiz={id:"",name:"Saraswati Puja Qui
 const languageNames={hi:"हिंदी",en:"English",bn:"বাংলা"};
 const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"{}")}catch{return {}}};
 let syncChain=Promise.resolve();
+let unsubPlayers=null, watchedPlayerCode="";
 function persist(){
   const s=read();s.quiz={...quiz,questions,currentIndex:current};s.questions=bankQuestions;s.questionBank=bankQuestions;s.players=players;
   try{localStorage.setItem(KEY,JSON.stringify(s))}catch(e){console.warn("Local cache unavailable",e)}
@@ -68,6 +69,27 @@ function localizedAdminQuestion(q){const lang=selectedQuestionLanguage(),t=q?.tr
 function visibleQuestionIndexes(){const filter=$("categoryFilter").value;return bankQuestions.map((q,i)=>({q,i})).filter(x=>filter==="__all"||(x.q.category||"Uncategorized")===filter).map(x=>x.i)}
 function refreshCategoryFilter(){const select=$("categoryFilter"),previous=select.value;const cats=[...new Set(bankQuestions.map(q=>q.category||"Uncategorized"))].sort((a,b)=>a.localeCompare(b));const signature="__all|"+bankQuestions.length+"|"+cats.map(c=>c+":"+bankQuestions.filter(q=>(q.category||"Uncategorized")===c).length).join("|");if(select.dataset.signature===signature)return;select.dataset.signature=signature;select.innerHTML="<option value='__all'>All Categories ("+bankQuestions.length+")</option>"+cats.map(c=>"<option value='"+escapeHtml(c)+"'>"+escapeHtml(c)+" ("+bankQuestions.filter(q=>(q.category||"Uncategorized")===c).length+")</option>").join("");select.value=cats.includes(previous)?previous:"__all"}
 function formatElapsed(ms){const t=Math.max(0,Math.floor(ms/1000));return String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0")}
+function watchPlayers(){
+  const code=String(quiz.id||"").trim().toUpperCase();
+  if(!code)return;
+  if(watchedPlayerCode===code&&unsubPlayers)return;
+  if(unsubPlayers){unsubPlayers();unsubPlayers=null;}
+  watchedPlayerCode=code;
+  unsubPlayers=onSnapshot(collection(db,"quizzes",code,"players"),snap=>{
+    const previous=new Map(players.map(p=>[String(p.uid||p.id||""),p]));
+    players=snap.docs.map(d=>{
+      const old=previous.get(d.id)||{};
+      return {...old,...d.data(),uid:d.id,score:Number(old.score||0)};
+    });
+    const state=read();state.players=players;
+    try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){console.warn("Could not cache player list",e)}
+    render();
+  },error=>{
+    console.error("Live participant sync failed",error);
+    const status=$("liveStatus");
+    if(status)status.textContent="Participant sync error: "+(error.message||"Firebase Rules जाँचें।");
+  });
+}
 function render(){
  refreshCategoryFilter();
  const visible=visibleQuestionIndexes();
@@ -81,7 +103,7 @@ function render(){
  const secs=Number(quiz.settings?.questionSeconds||10),started=Number(quiz.questionStartedAt||0);
  $("adminTimer").textContent=quiz.status==="live"?(Math.max(0,secs*1000-(Date.now()-started))/1000).toFixed(1)+" sec":"—";
  $("participants").textContent=players.length;
- $("players").innerHTML=players.map(p=>"<li>"+escapeHtml(p.name)+" — "+(p.score||0)+" points</li>").join("");
+ $("players").innerHTML=players.map(p=>"<li>"+escapeHtml(p.name)+" <small>"+escapeHtml(p.email||"")+"</small> — "+(p.score||0)+" points</li>").join("");
  $("questions").querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const i=Number(b.dataset.del);if(i<0||i>=questions.length)return;if(!confirm("यह प्रश्न हटाना है?"))return;bankQuestions.splice(i,1);questions=bankQuestions;$("deleteStatus").textContent="एक प्रश्न हटा दिया गया।";save()});
  $("questions").querySelectorAll(".question-checkbox").forEach(box=>box.onchange=()=>{const n=$("questions").querySelectorAll(".question-checkbox:checked").length;$("deleteStatus").textContent=n?n+" प्रश्न चुने गए हैं।":"कोई प्रश्न चुना नहीं गया।";updateSelectionButton()});
  $("selectAllQuestions").disabled=!visible.length;
@@ -139,7 +161,7 @@ $("importJson").addEventListener("click",importJson);
 $("jsonFile").addEventListener("change",e=>{const file=e.target.files&&e.target.files[0];if(file)$("importStatus").textContent="फ़ाइल चुनी गई: "+file.name+" ("+Math.round(file.size/1024)+" KB)। अब Import JSON Questions दबाएँ।"});
 $("downloadSample").onclick=()=>{const sample={exam:"Sample Quiz",questions:[{q:"भारत की राजधानी क्या है?",options:["दिल्ली","मुंबई","कोलकाता","चेन्नई"],answer:"A"}]};const a=document.createElement("a"),url=URL.createObjectURL(new Blob([JSON.stringify(sample,null,2)],{type:"application/json"}));a.href=url;a.download="netaji-quiz-sample.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
 $("generate").onclick=()=>{$("quizCode").value="NC"+Math.random().toString(36).slice(2,8).toUpperCase()};
-$("quizForm").onsubmit=e=>{e.preventDefault();const newCode=$("quizCode").value.trim().toUpperCase();if(!newCode){alert("Quiz Code generate करें।");return}const codeChanged=newCode!==quiz.id;quiz.id=newCode;quiz.name=$("quizName").value.trim();quiz.status="waiting";quiz.startAt=0;quiz.startedAt=null;quiz.questionStartedAt=0;quiz.endAt=0;quiz.runId=crypto.randomUUID();current=0;stopTimers();save();persist();$("liveStatus").textContent="Quiz तैयार है। Start Quiz दबाकर शुरू करें।";alert("Quiz saved. Code: "+quiz.id+" — Status reset to waiting.")};
+$("quizForm").onsubmit=e=>{e.preventDefault();const newCode=$("quizCode").value.trim().toUpperCase();if(!newCode){alert("Quiz Code generate करें।");return}const codeChanged=newCode!==quiz.id;quiz.id=newCode;quiz.name=$("quizName").value.trim();quiz.status="waiting";quiz.startAt=0;quiz.startedAt=null;quiz.questionStartedAt=0;quiz.endAt=0;quiz.runId=crypto.randomUUID();current=0;stopTimers();save();persist();watchPlayers();$("liveStatus").textContent="Quiz तैयार है। Start Quiz दबाकर शुरू करें।";alert("Quiz saved. Code: "+quiz.id+" — Status reset to waiting.")};
 $("questionForm").onsubmit=e=>{e.preventDefault();bankQuestions.push({question:$("qText").value.trim(),options:[$("a").value.trim(),$("b").value.trim(),$("c").value.trim(),$("d").value.trim()],correctIndex:+$("correct").value,category:selectedSingleCategory()});questions=bankQuestions;e.target.reset();save()};
 function stopTimers(){if(autoTimer)clearInterval(autoTimer);if(countdownTimer)clearInterval(countdownTimer);autoTimer=countdownTimer=null}
 async function beginLive(){
@@ -229,7 +251,7 @@ function runQuestionTimer(){
 }
 function openLiveScreen(){if(!quiz.id){alert("पहले Quiz Code generate करके Save Quiz करें।");return null}const tab=window.open("index.html?host=1&code="+encodeURIComponent(quiz.id),"_blank");if(!tab){$("liveStatus").textContent="Live screen popup block हो गया। Open Live Screen बटन दबाएँ या browser में popups allow करें।"}return tab}
 $("openLiveScreen").onclick=()=>openLiveScreen();
-$("start").onclick=async()=>{const sec=Number($("questionSeconds").value),limit=Number($("questionLimit").value),delay=Number($("startDelay").value);if(!quiz.id){alert("पहले Quiz Code generate करके Save Quiz करें।");return}if(!Number.isFinite(sec)||sec<5||sec>600){alert("हर प्रश्न का समय 5 से 600 सेकंड के बीच रखें।");return}if(!Number.isInteger(limit)||limit<1){alert("Question limit कम से कम 1 होना चाहिए।");return}await restoreRemoteQuestionBank();if(!bankQuestions.length){alert("Question Bank खाली है। JSON से प्रश्न import करें या प्रश्न जोड़ें।");return}stopTimers();quiz.status="waiting";quiz.endAt=0;quiz.settings={...(quiz.settings||{}),questionSeconds:sec,questionLimit:limit,startDelay:delay};const questionBank=[...bankQuestions];const selectedQuestions=shuffle(questionBank).slice(0,Math.min(limit,questionBank.length));if(selectedQuestions.length<limit){alert("ध्यान दें: आपने "+limit+" प्रश्न चुने हैं, लेकिन अभी उपलब्ध Question Bank में केवल "+selectedQuestions.length+" प्रश्न मिले। प्रश्न सूची के ऊपर कुल संख्या जाँचें और जरूरत हो तो पूरा JSON फिर से Import करें।");}questions=selectedQuestions;current=0;players=read().players||[];$("liveStatus").textContent="Question Bank: "+bankQuestions.length+" • इस Quiz में चुने गए: "+questions.length;render();beginLive();alert(delay>0?"Questions sync होने के बाद "+delay+" सेकंड का countdown Admin और Player दोनों पर चलेगा।":"Questions sync होने के बाद Quiz शुरू होगा।")};
+$("start").onclick=async()=>{const sec=Number($("questionSeconds").value),limit=Number($("questionLimit").value),delay=Number($("startDelay").value);if(!quiz.id){alert("पहले Quiz Code generate करके Save Quiz करें।");return}if(!Number.isFinite(sec)||sec<5||sec>600){alert("हर प्रश्न का समय 5 से 600 सेकंड के बीच रखें।");return}if(!Number.isInteger(limit)||limit<1){alert("Question limit कम से कम 1 होना चाहिए।");return}await restoreRemoteQuestionBank();watchPlayers();if(!bankQuestions.length){alert("Question Bank खाली है। JSON से प्रश्न import करें या प्रश्न जोड़ें।");return}stopTimers();quiz.status="waiting";quiz.endAt=0;quiz.settings={...(quiz.settings||{}),questionSeconds:sec,questionLimit:limit,startDelay:delay};const questionBank=[...bankQuestions];const selectedQuestions=shuffle(questionBank).slice(0,Math.min(limit,questionBank.length));if(selectedQuestions.length<limit){alert("ध्यान दें: आपने "+limit+" प्रश्न चुने हैं, लेकिन अभी उपलब्ध Question Bank में केवल "+selectedQuestions.length+" प्रश्न मिले। प्रश्न सूची के ऊपर कुल संख्या जाँचें और जरूरत हो तो पूरा JSON फिर से Import करें।");}questions=selectedQuestions;current=0;players=read().players||[];$("liveStatus").textContent="Question Bank: "+bankQuestions.length+" • इस Quiz में चुने गए: "+questions.length;render();beginLive();alert(delay>0?"Questions sync होने के बाद "+delay+" सेकंड का countdown Admin और Player दोनों पर चलेगा।":"Questions sync होने के बाद Quiz शुरू होगा।")};
 $("next").onclick=()=>{if(quiz.status!=="live")return;if(current<questions.length-1){current++;quiz.questionStartedAt=Date.now();publish()}else $("end").click()};
 $("end").onclick=async()=>{stopTimers();quiz.status="completed";quiz.endAt=Date.now();await persist();render();$("liveStatus").textContent="Quiz समाप्त हो गया है। Results तैयार हो रहे हैं…";await loadResults()};
 async function loadResults(){
@@ -260,12 +282,24 @@ async function loadResults(){
       const totalSolveMs=completed&&times.length?Math.max(0,Math.max(...times)-Number(quiz.startAt||0)):elapsed;
       return {...p,mine,correct,answered:mine.length,elapsed,totalSolveMs,completed};
     }).sort((a,b)=>b.correct-a.correct||(a.completed!==b.completed?(a.completed?-1:1):a.totalSolveMs-b.totalSolveMs)||String(a.name||"").localeCompare(String(b.name||"")));
-    if(status)status.textContent="कुल प्रतिभागी: "+rows.length+" • उत्तर जमा करने वाले: "+answers.length+" • कुल प्रश्न: "+total;
-    if(board)board.innerHTML=rows.length?rows.map((p,i)=>'<li class="result-row"><button type="button" class="result-name" data-result-uid="'+escapeHtml(p.uid)+'">#'+(i+1)+' '+escapeHtml(p.name||"नाम नहीं")+'</button> — सही: <b>'+p.correct+'</b>/'+total+' • जवाब: '+p.answered+'/'+total+' • समय: '+formatPrecise(p.totalSolveMs)+(p.completed?' • पूरा किया':' • अधूरा')+'</li>').join(""):"कोई प्रतिभागी नहीं मिला।";
+    if(quiz.status==="completed"){
+      const points=Number(quiz.settings?.pointsPerCorrect||10);
+      for(let offset=0;offset<rows.length;offset+=400){
+        const batch=writeBatch(db);
+        rows.slice(offset,offset+400).forEach(p=>batch.set(doc(db,"quizzes",code,"results",p.uid),{
+          uid:p.uid,name:p.name||"",email:p.email||"",photoURL:p.photoURL||"",
+          score:p.correct*points,correct:p.correct,answered:p.answered,totalQuestions:total,
+          totalSolveMs:p.totalSolveMs,completed:p.completed,quizCode:code,updatedAt:serverTimestamp()
+        },{merge:true}));
+        await batch.commit();
+      }
+    }
+    if(status)status.textContent="कुल प्रतिभागी: "+rows.length+" • उत्तर जमा करने वाले: "+answers.length+" • कुल प्रश्न: "+total+" • "+(quiz.status==="completed"?"Scores Firebase में save हो गए।":"Scores submitted answers से calculate हुए।");
+    if(board)board.innerHTML=rows.length?rows.map((p,i)=>'<li class="result-row"><button type="button" class="result-name" data-result-uid="'+escapeHtml(p.uid)+'">#'+(i+1)+' '+escapeHtml(p.name||"नाम नहीं")+'</button> <small>'+escapeHtml(p.email||"")+'</small> — Score: <b>'+(p.correct*Number(quiz.settings?.pointsPerCorrect||10))+'</b> • सही: <b>'+p.correct+'</b>/'+total+' • जवाब: '+p.answered+'/'+total+' • समय: '+formatPrecise(p.totalSolveMs)+(p.completed?' • पूरा किया':' • अधूरा')+'</li>').join(""):"कोई प्रतिभागी नहीं मिला।";
     board?.querySelectorAll("[data-result-uid]").forEach(btn=>btn.onclick=()=>{
       const p=rows.find(x=>x.uid===btn.dataset.resultUid);
       if(!p||!detail)return;
-      detail.innerHTML='<h3>'+escapeHtml(p.name||"Player")+' — उत्तर विवरण</h3><p>सही उत्तर: '+p.correct+'/'+total+' • जमा किए: '+p.answered+'/'+total+' • कुल समय: '+formatPrecise(p.totalSolveMs)+'</p><ol>'+Array.from({length:total},(_,i)=>{
+      detail.innerHTML='<h3>'+escapeHtml(p.name||"Player")+' — उत्तर विवरण</h3><p>Email: '+escapeHtml(p.email||"—")+'</p><p>Score: '+(p.correct*Number(quiz.settings?.pointsPerCorrect||10))+' • सही उत्तर: '+p.correct+'/'+total+' • जमा किए: '+p.answered+'/'+total+' • कुल समय: '+formatPrecise(p.totalSolveMs)+'</p><ol>'+Array.from({length:total},(_,i)=>{
         const a=p.mine.find(x=>Number(x.q)===i),q=qs.get(String(i)),correct=keys.get(String(i));
         const selected=a?Number(a.sel):-1;
         const at=a&&a.at&&typeof a.at.toDate==="function"?a.at.toDate().toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"medium"}):"जवाब नहीं दिया";
