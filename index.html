@@ -12,7 +12,9 @@
 <p class="eyebrow">🪷 ज्ञान का उत्सव, साथ मिलकर 🪷</p><h2>सरस्वती पूजा<br>क्विज़ प्रतियोगिता</h2>
 <p>अपनी जानकारी परखें, दोस्तों के साथ खेलें और विजेता बनें।</p>
 <section id="authPanel" class="panel">
-<h3>Player Account</h3><p>नया अकाउंट बनाएँ या अपने ईमेल से लॉगिन करें।</p>
+<h3>Player Login</h3><p>Google से सुरक्षित Login करें, फिर अपना नाम लिखकर Quiz में जुड़ें।</p>
+<button id="googleLoginBtn" class="primary google-login" type="button">🔐 Continue with Google</button>
+<p class="muted">पुराना Email/Password अकाउंट भी नीचे से इस्तेमाल कर सकते हैं।</p>
 <form id="authForm">
 <input id="authName" placeholder="आपका नाम (नए अकाउंट के लिए)" maxlength="40" autocomplete="name">
 <input id="authEmail" type="email" placeholder="Email ID" autocomplete="email" required>
@@ -26,7 +28,7 @@
 </section>
 <div id="notice" class="notice" aria-live="polite">Admin से Quiz Code लें। Quiz शुरू होने पर प्रश्न यहाँ दिखाई देंगे।</div>
 </section>
-<section id="game" class="card hidden"><div class="row"><span id="status" class="badge">Waiting</span><strong id="timer">—</strong></div><h2 id="question">प्रश्न यहाँ दिखेगा</h2><div id="options" class="options"></div><p id="feedback" aria-live="polite"></p><p>Score: <strong id="score">0</strong></p></section>
+<section id="game" class="card hidden"><div class="row"><span id="status" class="badge">Waiting</span><strong id="timer">—</strong></div><h2 id="question">प्रश्न यहाँ दिखेगा</h2><div id="options" class="options"></div><p id="feedback" aria-live="polite"></p><p>Score: <strong id="score">0</strong></p><p>Correct answers / सही जवाब: <strong id="correctCount">0</strong></p></section>
 </main>
-<script type="module" src="js/app.js?v=20261012-multilingual-1"></script>
+<script type="module" src="js/app.js?v=20261012-google-feedback-1"></script>
 </body></html>
