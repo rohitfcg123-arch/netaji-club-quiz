@@ -1,7 +1,7 @@
 import { auth, db } from "./firebase.js";
 import {
   onAuthStateChanged, signOut, setPersistence, browserLocalPersistence,
-  GoogleAuthProvider, signInWithRedirect, getRedirectResult
+  GoogleAuthProvider, signInWithRedirect, getRedirectResult, getIdTokenResult
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {
   doc, getDoc, onSnapshot, setDoc, serverTimestamp
@@ -42,10 +42,6 @@ function waiting(text = "Admin के Quiz शुरू करने का इ�
 function showGame() { $("game").classList.remove("hidden"); }
 function authError(e) {
   const messages = {
-    "auth/email-already-in-use": "इस Email से अकाउंट पहले से बना है। Login करें।",
-    "auth/invalid-email": "Email ID सही नहीं है।",
-    "auth/weak-password": "Password कम से कम 6 अक्षर का रखें।",
-    "auth/invalid-credential": "Email या Password गलत है।",
     "auth/too-many-requests": "बहुत बार कोशिश हुई है। कुछ देर बाद फिर प्रयास करें。",
     "auth/network-request-failed": "Internet connection जाँचें।",
     "auth/unauthorized-domain": "Firebase Console में GitHub Pages domain को Authorized domains में जोड़ें।",
@@ -65,11 +61,19 @@ if (hostMode) {
 } else {
   // Players must authenticate with Google only. Password-based sessions from an
   // older version are signed out and cannot enter the player portal.
-  const isGoogleUser = user => !!user?.providerData?.some(p => p.providerId === "google.com");
+  async function isGoogleUser(user) {
+    try {
+      const token = await getIdTokenResult(user);
+      return token.claims.firebase?.sign_in_provider === "google.com";
+    } catch (error) {
+      console.error("Could not verify Google sign-in provider:", error);
+      return false;
+    }
+  }
 
   async function routeAuthenticatedUser(user) {
     if (!user) return;
-    if (!isGoogleUser(user)) {
+    if (!(await isGoogleUser(user))) {
       try { await signOut(auth); } catch (error) { console.error("Sign out non-Google player:", error); }
       authNotice("Player Portal में केवल Continue with Google से Login कर सकते हैं।");
       return;
