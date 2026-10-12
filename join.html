@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#fff4d8">
 <title>Quiz में शामिल हों | नेताजी क्लब</title>
-<link rel="stylesheet" href="css/styles.css?v=20261012-join-debug-1">
+<link rel="stylesheet" href="css/styles.css?v=20261012-language-lock-1">
 </head>
 <body>
 <header class="top">
@@ -20,6 +20,12 @@
     <p>अपना नाम और Admin से मिला Quiz Code डालें। फिर <strong>Start Quiz</strong> दबाएँ। Admin के Quiz शुरू करते ही प्रश्न अपने आप दिखने लगेंगे।</p>
     <p id="signedInLabel" class="muted"></p>
     <form id="joinForm" class="join-form">
+      <label for="quizLanguage">प्रश्नों की भाषा / Question Language</label>
+      <select id="quizLanguage" aria-label="प्रश्नों की भाषा">
+        <option value="hi">हिंदी</option>
+        <option value="en">English</option>
+        <option value="bn">বাংলা (Bengali)</option>
+      </select>
       <label for="playerName">आपका नाम</label>
       <input id="playerName" placeholder="अपना नाम लिखें" maxlength="40" autocomplete="name" required>
       <label for="quizCode">Quiz Code</label>
@@ -37,6 +43,6 @@
     <p>Correct answers / सही जवाब: <strong id="correctCount">0</strong></p>
   </section>
 </main>
-<script type="module" src="js/join.js?v=20261012-join-debug-1"></script>
+<script type="module" src="js/join.js?v=20261012-language-lock-1"></script>
 </body>
 </html>
