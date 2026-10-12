@@ -91,7 +91,9 @@ form?.addEventListener("submit", async (event) => {
     showGate(false);
   } catch (error) {
     console.error("Admin login failed:", error);
-    if (auth.currentUser && !authorizedUid) {
+    if (auth.currentUser && !authorizedUid && error?.code === "admin/not-authorized") {
+      // Sign out only after a confirmed missing/inactive admin allowlist record.
+      // Temporary network/Firestore failures must not destroy a valid Firebase session.
       try { await signOut(auth); } catch (signOutError) { console.error(signOutError); }
     }
     const code = error?.code || "";
@@ -125,11 +127,11 @@ onAuthStateChanged(auth, async (user) => {
       try { await signOut(auth); } catch (signOutError) { console.error(signOutError); }
       setMessage(error.message, true);
     } else {
-      // Keep the signed-in admin on the dashboard during temporary Firestore/network errors.
-      // Only an explicit Logout or a confirmed inactive/missing admin record should gate access.
-      authorizedUid = user.uid;
-      showGate(false);
-      setMessage("आप Login हैं। Admin permission की जाँच अभी अस्थायी रूप से नहीं हो पाई; Internet/Firestore Rules जाँचें। Session हटाया नहीं गया है। विवरण: " + (error?.message || "Unknown error"), true);
+      // Preserve the Firebase session, but do not reveal the admin dashboard until
+      // the allowlist check succeeds. Firestore Rules remain the security boundary.
+      authorizedUid = null;
+      showGate(true);
+      setMessage("आपका Firebase session बना हुआ है, लेकिन Admin permission अभी verify नहीं हो सकी। Internet/Firestore Rules जाँचें और page refresh करें। Logout नहीं किया गया। विवरण: " + (error?.message || "Unknown error"), true);
     }
   }
 });
