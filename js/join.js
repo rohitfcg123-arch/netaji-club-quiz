@@ -1,5 +1,5 @@
 import { auth, db } from "./firebase.js";
-import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { onAuthStateChanged, signOut, getIdTokenResult } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { doc, getDoc, onSnapshot, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const $ = id => document.getElementById(id);
@@ -62,7 +62,13 @@ onAuthStateChanged(auth, async user => {
     location.replace("index.html");
     return;
   }
-  const googleAuthenticated = user.providerData?.some(provider => provider.providerId === "google.com");
+  let googleAuthenticated = false;
+  try {
+    const token = await getIdTokenResult(user);
+    googleAuthenticated = token.claims.firebase?.sign_in_provider === "google.com";
+  } catch (error) {
+    console.error("Could not verify Google sign-in provider:", error);
+  }
   if (!googleAuthenticated) {
     try { await signOut(auth); } catch (error) { console.error("Non-Google player sign-out:", error); }
     location.replace("index.html");
