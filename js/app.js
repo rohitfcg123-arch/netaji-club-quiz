@@ -284,11 +284,18 @@ function escapeHostHtml(v) {
   return String(v).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 }
 async function verifyHostAdmin(user) {
-  if (!user) throw new Error("Admin login session not found. Admin Portal se Review Quiz kholein.");
+  if (!user || !user.email) throw new Error("Admin login session not found. Admin Portal se Google login karke Review Quiz dobara kholein.");
   const token = await getIdTokenResult(user);
-  if (token.claims.firebase?.sign_in_provider !== "password") throw new Error("Review screen sirf Admin Portal ke verified Admin account ke liye hai.");
-  const adminSnap = await getDoc(doc(db, "admins", user.uid));
-  if (!adminSnap.exists() || adminSnap.data()?.active !== true) throw new Error("Is account ko active Admin permission nahi hai.");
+  if (token.claims.firebase?.sign_in_provider !== "google.com") {
+    throw new Error("Review screen ke liye Admin Portal mein Google Account se login karein.");
+  }
+  const email = String(user.email).trim().toLowerCase();
+  if (email !== "rohit.fcg123@gmail.com") {
+    const approval = await getDoc(doc(db, "approvedAdminEmails", email));
+    if (!approval.exists() || approval.data()?.active !== true || String(approval.data()?.email || "").trim().toLowerCase() !== email) {
+      throw new Error("Is Google account ko Admin approval nahi mila hai. Root Admin se approval lein.");
+    }
+  }
   hostAdminVerified = true;
   startHostLiveData(requestedCode);
   startListening(requestedCode);
