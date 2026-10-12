@@ -311,3 +311,76 @@ body.host-mode {
  .host-mode .host-option-en{font-size:clamp(9px,2vh,12px)}
  .host-mode .host-option-hi,.host-mode .host-option-bn{font-size:clamp(7px,1.4vh,9px)}
 }
+
+
+/* Theme Studio: live, preset-driven visual variables for connected quiz screens */
+body.brand-themed:not(.host-mode):not(.winners-page){
+  background-color:var(--theme-background);
+  color:var(--theme-text);
+  background-image:var(--theme-background-image),radial-gradient(color-mix(in srgb,var(--theme-border),transparent 25%) 1px,transparent 1px);
+  background-size:cover,18px 18px;
+  background-attachment:fixed;
+}
+body.brand-themed:not(.host-mode):not(.winners-page) .top{
+  background:var(--theme-header)!important;border-color:var(--theme-border)!important;color:var(--theme-text)!important;
+}
+body.brand-themed:not(.host-mode):not(.winners-page) .top h1,
+body.brand-themed:not(.host-mode):not(.winners-page) .hero h2,
+body.brand-themed:not(.host-mode):not(.winners-page) .card h2,
+body.brand-themed:not(.host-mode):not(.winners-page) .card h3{color:var(--theme-primary)!important}
+body.brand-themed:not(.host-mode):not(.winners-page) .top p,
+body.brand-themed:not(.host-mode):not(.winners-page) .top small{color:var(--theme-text)!important;opacity:.82}
+body.brand-themed:not(.host-mode):not(.winners-page) .brand{background:var(--theme-primary)!important;color:#fff}
+body.brand-themed:not(.host-mode):not(.winners-page) .card{background:var(--theme-surface)!important;border-color:var(--theme-border)!important;color:var(--theme-text)!important}
+body.brand-themed:not(.host-mode):not(.winners-page) .panel,
+body.brand-themed:not(.host-mode):not(.winners-page) .join-form{background:var(--theme-surface)!important;border-color:var(--theme-border)!important;color:var(--theme-text)!important}
+body.brand-themed:not(.host-mode):not(.winners-page) .notice{background:color-mix(in srgb,var(--theme-accent),var(--theme-surface) 88%);color:var(--theme-text)}
+body.brand-themed:not(.host-mode):not(.winners-page) .eyebrow{color:var(--theme-accent)!important}
+body.brand-themed:not(.host-mode):not(.winners-page) .primary{background:linear-gradient(135deg,var(--theme-primary),var(--theme-accent))!important;color:#fff!important;box-shadow:none}
+body.brand-themed:not(.host-mode):not(.winners-page) .panel input,
+body.brand-themed:not(.host-mode):not(.winners-page) .panel select,
+body.brand-themed:not(.host-mode):not(.winners-page) .join-form input,
+body.brand-themed:not(.host-mode):not(.winners-page) .join-form select{border-color:var(--theme-border)!important;background:var(--theme-surface)!important;color:var(--theme-text)!important}
+body.brand-themed:not(.host-mode):not(.winners-page) .link{color:var(--theme-primary)!important}
+
+/* Projector board keeps its layout but adopts the selected festival palette. */
+body.host-mode.brand-themed{
+  background-color:var(--theme-background)!important;
+  background-image:var(--theme-background-image),radial-gradient(ellipse at 12% 8%,color-mix(in srgb,var(--theme-primary),transparent 72%),transparent 43%),radial-gradient(ellipse at 92% 15%,color-mix(in srgb,var(--theme-accent),transparent 80%),transparent 38%)!important;
+  color:var(--theme-text)!important;
+}
+body.host-mode.brand-themed .host-round{background:color-mix(in srgb,var(--theme-surface),transparent 12%)!important;border-color:var(--theme-border)!important}
+body.host-mode.brand-themed .host-round-label,
+body.host-mode.brand-themed .host-ranking-heading h2{color:var(--theme-accent)!important}
+body.host-mode.brand-themed .host-question-panel{background:var(--theme-surface)!important;color:var(--theme-text)!important;border-color:var(--theme-border)!important}
+body.host-mode.brand-themed .host-lang h2{color:var(--theme-primary)!important}
+body.host-mode.brand-themed .host-lang-hi h2{color:var(--theme-primary)!important}
+body.host-mode.brand-themed .host-lang-bn h2{color:var(--theme-primary)!important}
+body.host-mode.brand-themed .host-lang-tag{background:color-mix(in srgb,var(--theme-primary),white 86%)!important;color:var(--theme-primary)!important}
+body.host-mode.brand-themed .host-lang-hi .host-lang-tag{background:color-mix(in srgb,var(--theme-accent),white 82%)!important;color:var(--theme-text)!important}
+body.host-mode.brand-themed .host-lang-bn .host-lang-tag{background:color-mix(in srgb,var(--theme-secondary),white 72%)!important;color:var(--theme-text)!important}
+body.host-mode.brand-themed .host-option-d{background:linear-gradient(135deg,var(--theme-secondary),var(--theme-accent))!important}
+body.host-mode.brand-themed .host-footer{background:color-mix(in srgb,var(--theme-surface),transparent 10%)!important;border-color:var(--theme-border)!important;color:var(--theme-text)!important}
+body.host-mode.brand-themed .host-foot-stat small,
+body.host-mode.brand-themed .host-ranking-note{color:var(--theme-text)!important;opacity:.8}
+body.host-mode.brand-themed .host-rank-card{border-color:var(--theme-border)!important;background:color-mix(in srgb,var(--theme-surface),transparent 10%)!important}
+body.host-mode.brand-themed .host-player-name,
+body.host-mode.brand-themed .host-player-score{color:var(--theme-text)!important}
+body.host-mode.brand-themed .host-player-detail{color:var(--theme-text)!important;opacity:.8}
+body.brand-decorations-on:not(.host-mode):not(.winners-page)::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.2;background:radial-gradient(circle at 90% 12%,var(--theme-accent) 0 2px,transparent 3px),radial-gradient(circle at 7% 84%,var(--theme-secondary) 0 2px,transparent 3px);background-size:120px 120px,155px 155px}
+body.brand-animations-on:not(.host-mode) .hero{animation:brandingFloatIn .45s ease-out}
+@keyframes brandingFloatIn{from{opacity:.86;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+
+/* Winners page follows the selected palette when branding is enabled. */
+body.brand-themed.winners-page{background-color:var(--theme-background)!important;background-image:var(--theme-background-image),radial-gradient(ellipse at 50% 0%,color-mix(in srgb,var(--theme-primary),transparent 35%),var(--theme-background) 75%)!important;color:var(--theme-text)!important}
+body.brand-themed.winners-page .w-top{background:var(--theme-header)!important;border-color:var(--theme-border)!important}
+body.brand-themed.winners-page .w-brand,
+body.brand-themed.winners-page .w-hero h1,
+body.brand-themed.winners-page .w-section h2{color:var(--theme-primary)!important}
+body.brand-themed.winners-page .w-hero h1{background:none!important;-webkit-text-fill-color:var(--theme-primary)!important;text-shadow:none!important}
+body.brand-themed.winners-page .w-hero p,
+body.brand-themed.winners-page .w-note{color:var(--theme-text)!important;opacity:.82}
+body.brand-themed.winners-page .w-section,
+body.brand-themed.winners-page .w-stage{background:var(--theme-surface)!important;border-color:var(--theme-border)!important;color:var(--theme-text)!important}
+body.brand-themed.winners-page .w-table th{color:var(--theme-primary)!important}
+body.brand-themed.winners-page .w-table td{border-color:var(--theme-border)!important}
