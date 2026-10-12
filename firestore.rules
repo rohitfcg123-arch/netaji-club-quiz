@@ -137,7 +137,7 @@ service cloud.firestore {
       match /answers/{aid} {
         // Players may read only their own submitted answer; admins can review all.
         allow get, list: if isAdmin()
-          || (signedIn() && resource.data.uid == request.auth.uid);
+          || (googlePlayer() && resource.data.uid == request.auth.uid);
 
         // Allow one answer per authenticated player for the currently live question.
         // Do not depend on timestamp arithmetic here: it can cause valid answers
