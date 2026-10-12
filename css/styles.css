@@ -121,7 +121,7 @@ body.host-mode {
 .host-trophy{font-size:clamp(20px,1.6vw,30px)}
 .host-ranking-heading h2{font-size:clamp(17px,1.55vw,27px);line-height:1;margin:0;color:#ffd548;font-weight:950;letter-spacing:.1px}
 .host-ranking-note{margin-left:auto;font-size:clamp(10px,.72vw,13px);color:#9fb7d0}
-.host-rank-grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:8px;overflow:hidden}
+.host-rank-grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;overflow:hidden}
 .host-rank-card{min-width:0;min-height:0;border:1px solid #204a6e;border-radius:15px;background:linear-gradient(150deg,#071d33ee,#06172bfa);padding:7px 5px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;box-shadow:inset 0 1px #ffffff12;text-align:center;overflow:hidden}
 .host-rank-card-top{height:22px;display:flex;justify-content:space-between;align-items:center;gap:4px;width:100%;padding:0 3px}
 .host-rank-number{font-size:clamp(14px,1.15vw,21px);font-weight:950;color:#f3f7ff}
