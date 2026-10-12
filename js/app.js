@@ -82,7 +82,7 @@ function hostSafeImage(value) {
 function hostTranslation(q, lang) {
   const tr = q && q.translations && q.translations[lang];
   if (tr && typeof tr.question === "string" && Array.isArray(tr.options) && tr.options.length === 4) return tr;
-  if (lang === "hi" || (!q || !q.translations)) return { question: q && q.question || "", options: q && q.options || [], fallback: true };
+  if (lang === "hi") return { question: q && q.question || "", options: q && q.options || [], fallback: true };
   const missing = lang === "en" ? "English translation unavailable" : "এই প্রশ্নটির বাংলা অনুবাদ নেই";
   return { question: missing, options: [], fallback: true };
 }
@@ -213,6 +213,12 @@ function recalculateHostRanking() {
   if (!hostMode) return;
   const total = Math.max(0, Number(quizState?.count || 0));
   const points = Number(quizState?.settings?.pointsPerCorrect || 10);
+  if (!hostHasRankBaseline && hostPlayers.length) {
+    const initialOrder = [...hostPlayers].sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+    hostBaseRanks = new Map(initialOrder.map((p, i) => [p.uid, i + 1]));
+    hostHasRankBaseline = true;
+    hostLastBaselineQuestion = currentIndex;
+  }
   const rows = hostPlayers.map(p => {
     const mine = hostAnswers.filter(a => a.uid === p.uid);
     const correct = mine.filter(a => hostKeys.has(String(a.q)) && hostKeys.get(String(a.q)) === Number(a.sel)).length;
@@ -297,6 +303,7 @@ function waiting(text = "Admin के Quiz शुरू करने का इ�
   $("question").textContent = text;
   clearOptions();
   $("feedback").textContent = "";
+  if (hostMode) { renderHostWaiting(text); hostMessage(text, "error"); }
 }
 function showGame() { $("game").classList.remove("hidden"); }
 function authError(e) {
@@ -317,10 +324,23 @@ if (hostMode) {
     renderHostWaiting("Quiz Code missing");
   } else {
     onAuthStateChanged(auth, user => {
+      if (!user) {
+        hostAdminVerified = false;
+        hostDataUnsubs.forEach(fn => fn());
+        hostDataUnsubs = [];
+        hostDataCode = "";
+        hostPlayers = []; hostAnswers = []; hostKeys = new Map(); hostQuestionStarts = new Map();
+        if ($("hostRankGrid")) $("hostRankGrid").innerHTML = "<div class=\"host-board-empty\">Admin session required</div>";
+        hostMessage("Admin login session not found. Admin Portal se Review Quiz kholein.", "error");
+        renderHostWaiting("Admin verification required");
+        return;
+      }
       verifyHostAdmin(user).catch(error => {
         console.error("Review screen Admin verification failed:", error);
         hostAdminVerified = false;
+        hostDataUnsubs.forEach(fn => fn()); hostDataUnsubs = []; hostDataCode = "";
         hostMessage(error.message || "Admin verification failed.", "error");
+        if ($("hostRankGrid")) $("hostRankGrid").innerHTML = "<div class=\"host-board-empty\">Admin access required</div>";
         renderHostWaiting("Admin verification required");
       });
     });
@@ -397,12 +417,14 @@ function startListening(code) {
   unsubQuiz = onSnapshot(doc(db, "quizzes", activeCode), snap => {
     if (!snap.exists()) { waiting("इस Quiz Code का Quiz नहीं मिला।"); return; }
     quizState = snap.data();
+    if (hostMode) updateHostMeta();
     if (quizState.status === "completed") {
       $("status").textContent = "Completed";
       $("question").textContent = "Quiz समाप्त हो गया।";
       $("timer").textContent = "—";
       clearOptions();
       if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
+      if (hostMode) { renderHostWaiting("QUIZ COMPLETED"); $("status").textContent = "COMPLETED"; recalculateHostRanking(); hostMessage("Quiz completed", "success"); }
       return;
     }
     if (quizState.status === "starting") {
@@ -410,12 +432,19 @@ function startListening(code) {
       $("question").textContent = "क्विज़ शुरू होने वाला है…";
       clearOptions();
       $("timer").textContent = Math.max(0, Math.ceil((Number(quizState.startAt || 0) - Date.now()) / 1000));
+      if (hostMode) { renderHostWaiting("Quiz starts in a moment…"); $("status").textContent = "STARTING"; updateTimer(); }
       return;
     }
     if (quizState.status !== "live") { waiting("Admin के Quiz शुरू करने का इंतज़ार है"); return; }
 
     const idx = Number(quizState.currentIndex || 0);
     if (idx !== currentIndex) {
+      if (hostMode) {
+        hostBaseRanks = new Map(hostCurrentRankByUid);
+        hostHasRankBaseline = hostBaseRanks.size > 0;
+        hostLastBaselineQuestion = idx;
+        hostLastTickMarker = "";
+      }
       currentIndex = idx;
       answered = false;
       if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
@@ -425,17 +454,23 @@ function startListening(code) {
         const q = localizedQuestion(activeQuestionData);
         questionShownAt = Number(quizState.questionStartedAt || Date.now());
         $("status").textContent = "LIVE";
-        $("question").textContent = q.question || "";
         $("feedback").textContent = "";
-        clearOptions();
-        (q.options || []).forEach((o, i) => {
-          const b = document.createElement("button");
-          b.type = "button";
-          b.dataset.optionIndex = String(i);
-          b.textContent = String.fromCharCode(65 + i) + ". " + o;
-          if (!hostMode) b.addEventListener("click", () => submitAnswer(i));
-          $("options").appendChild(b);
-        });
+        if (hostMode) {
+          renderHostQuestion(activeQuestionData);
+          $("status").textContent = "LIVE";
+          hostMessage("", "");
+        } else {
+          $("question").textContent = q.question || "";
+          clearOptions();
+          (q.options || []).forEach((o, i) => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.dataset.optionIndex = String(i);
+            b.textContent = String.fromCharCode(65 + i) + ". " + o;
+            b.addEventListener("click", () => submitAnswer(i));
+            $("options").appendChild(b);
+          });
+        }
         // If the player refreshes after answering, preserve the locked answer.
         if (!hostMode && currentUser) {
           try {
@@ -516,13 +551,17 @@ async function submitAnswer(selected) {
 function updateTimer() {
   if (!quizState) return;
   if (quizState.status === "starting") {
-    $("timer").textContent = Math.max(0, Math.ceil((Number(quizState.startAt || 0) - Date.now()) / 1000));
+    const remaining = Math.max(0, Math.ceil((Number(quizState.startAt || 0) - Date.now()) / 1000));
+    if (hostMode) renderHostTimer(remaining, Math.max(1, Number(quizState.settings?.startDelay || remaining || 1)));
+    else $("timer").textContent = remaining;
     return;
   }
   if (quizState.status === "live") {
     const sec = Number(quizState.settings?.questionSeconds || 10);
     const remainingMs = Math.max(0, sec * 1000 - (Date.now() - Number(quizState.questionStartedAt || Date.now())));
-    $("timer").textContent = Math.ceil(remainingMs / 1000) + " sec";
+    const remaining = Math.ceil(remainingMs / 1000);
+    if (hostMode) renderHostTimer(remaining, sec);
+    else $("timer").textContent = remaining + " sec";
   }
 }
 setInterval(updateTimer, 250);
