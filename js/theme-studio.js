@@ -132,7 +132,9 @@ async function loadDefault() {
 }
 async function loadCurrentQuiz() {
   if (formDirty) {
-    throw new Error("आपके कुछ बदलाव अभी सेव नहीं हुए हैं। बदलाव बचाने के लिए Apply to Current Quiz पर क्लिक करें। पुरानी सेटिंग्स फिर से लोड करने के लिए पहले बदलाव सेव करें या पेज रीफ्रेश करें।");
+    const discard = window.confirm("इस form में कुछ unsaved बदलाव हैं। Current Quiz की saved settings लोड करने पर ये बदलाव हट जाएंगे। क्या आप आगे बढ़ना चाहते हैं?");
+    if (!discard) return;
+    clearLocalDraft();
   }
   const code = quizCode();
   if (!code) throw new Error("Current Quiz Code भरें। Admin Dashboard में Save Quiz करने के बाद यहाँ code डालें।");
@@ -258,10 +260,14 @@ $("tsReset").addEventListener("click", () => {
 });
 document.querySelectorAll('input[name="tsTarget"]').forEach(el => el.addEventListener("change", updateSaveLabel));
 
-// Do not silently restore a previous quiz code here. Theme Studio opens in
-// global/default mode so admins can change the public portal theme without a code.
-// A specific quiz is loaded only when "Load Current Quiz" is explicitly clicked.
-$("tsQuizCode").value = "";
+// Keep the editor in global/default mode, but prefill a useful quiz code
+// from the last explicitly opened quiz or the current admin live state.
+// We never auto-load that quiz, so it cannot overwrite default branding edits.
+try {
+  const live = JSON.parse(localStorage.getItem("netajiQuizLiveState") || "{}");
+  const savedCode = String(live.quiz?.id || localStorage.getItem("themeStudioLastQuizCode") || "").trim().toUpperCase();
+  if (savedCode) $("tsQuizCode").value = savedCode;
+} catch {}
 fillForm(BRANDING_DEFAULTS);
 onAuthStateChanged(auth, user => {
   if (!user) { authUser = null; return; }
