@@ -7,7 +7,9 @@ const languageNames={hi:"हिंदी",en:"English",bn:"বাংলা"};
 let adminAudioContext = null;
 let lastAdminTickKey = "";
 function timerSoundEnabled() {
-  return localStorage.getItem("ncTimerSoundEnabled") !== "false";
+  const saved = localStorage.getItem("ncTimerSoundEnabled");
+  if (saved !== null) return saved !== "false";
+  return typeof quiz?.settings?.timerSoundEnabled === "boolean" ? quiz.settings.timerSoundEnabled : true;
 }
 function playAdminTimerTick(remaining, scope = "question") {
   if (!timerSoundEnabled() || Number(remaining) <= 0) return;
@@ -40,6 +42,8 @@ function initTimerSoundToggle() {
   toggle.checked = timerSoundEnabled();
   toggle.addEventListener("change", () => {
     localStorage.setItem("ncTimerSoundEnabled", String(toggle.checked));
+    quiz.settings = { ...(quiz.settings || {}), timerSoundEnabled: toggle.checked };
+    if (quiz.id) persist().catch(error => console.error("Could not sync timer sound setting to Firebase:", error));
     if (toggle.checked) playAdminTimerTick(1, "toggle-preview");
   });
 }
@@ -251,7 +255,7 @@ async function beginLive(){
   const delay=Math.max(0,Number(quiz.settings?.startDelay||0));
   const seconds=Math.max(5,Number(quiz.settings?.questionSeconds||10));
   quiz.status="waiting";
-  quiz.settings={...(quiz.settings||{}),questionSeconds:seconds};
+  quiz.settings={...(quiz.settings||{}),questionSeconds:seconds,timerSoundEnabled:$("timerSoundEnabled")?$("timerSoundEnabled").checked:timerSoundEnabled()};
   quiz.count=questions.length;
   current=0;
   quiz.runId=crypto.randomUUID();
