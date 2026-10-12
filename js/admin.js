@@ -2,6 +2,7 @@ import { db } from "./firebase.js";
 import { collection, deleteDoc, doc, getDocs, onSnapshot, serverTimestamp, setDoc, Timestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 const $=id=>document.getElementById(id),KEY="netajiQuizLiveState";
 let questions=[],bankQuestions=[],current=0,quiz={id:"",name:"Saraswati Puja Quiz",status:"waiting",settings:{pointsPerCorrect:10,questionSeconds:10,questionLimit:100,startDelay:0},questions:[]},players=[],autoTimer=null,countdownTimer=null;
+const languageNames={hi:"हिंदी",en:"English",bn:"বাংলা"};
 const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"{}")}catch{return {}}};
 let syncChain=Promise.resolve();
 function persist(){
@@ -62,17 +63,20 @@ function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random
 function escapeHtml(v){return String(v).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;")}
 function currentCategory(){const custom=$("customImportCategory")?.value.trim();return custom||$("importCategory")?.value||"Uncategorized"}
 function selectedSingleCategory(){return $("customSingleCategory")?.value.trim()||$("singleCategory")?.value||"Uncategorized"}
+function selectedQuestionLanguage(){return $("questionLanguageFilter")?.value||"hi"}
+function localizedAdminQuestion(q){const lang=selectedQuestionLanguage(),t=q?.translations?.[lang];return t&&typeof t.question==="string"&&Array.isArray(t.options)&&t.options.length===4?{question:t.question,options:t.options,translated:true}:{question:q?.question||"",options:q?.options||[],translated:false}}
 function visibleQuestionIndexes(){const filter=$("categoryFilter").value;return bankQuestions.map((q,i)=>({q,i})).filter(x=>filter==="__all"||(x.q.category||"Uncategorized")===filter).map(x=>x.i)}
 function refreshCategoryFilter(){const select=$("categoryFilter"),previous=select.value;const cats=[...new Set(bankQuestions.map(q=>q.category||"Uncategorized"))].sort((a,b)=>a.localeCompare(b));const signature="__all|"+bankQuestions.length+"|"+cats.map(c=>c+":"+bankQuestions.filter(q=>(q.category||"Uncategorized")===c).length).join("|");if(select.dataset.signature===signature)return;select.dataset.signature=signature;select.innerHTML="<option value='__all'>All Categories ("+bankQuestions.length+")</option>"+cats.map(c=>"<option value='"+escapeHtml(c)+"'>"+escapeHtml(c)+" ("+bankQuestions.filter(q=>(q.category||"Uncategorized")===c).length+")</option>").join("");select.value=cats.includes(previous)?previous:"__all"}
 function formatElapsed(ms){const t=Math.max(0,Math.floor(ms/1000));return String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0")}
 function render(){
  refreshCategoryFilter();
  const visible=visibleQuestionIndexes();
- $("count").textContent=bankQuestions.length+" questions total • "+visible.length+" shown";
- $("questions").innerHTML=visible.map(i=>{const q=bankQuestions[i];return "<li class='question-item'><label class='question-select'><input type='checkbox' class='question-checkbox' data-select='"+i+"'><span><b>["+escapeHtml(q.category||"Uncategorized")+"]</b> Q"+(i+1)+". "+escapeHtml(q.question)+"</span></label><button type='button' data-del='"+i+"' class='danger small-button'>Delete</button></li>"}).join("");
+ const lang=selectedQuestionLanguage();const translatedCount=bankQuestions.filter(q=>q.translations&&q.translations[lang]&&typeof q.translations[lang].question==="string"&&Array.isArray(q.translations[lang].options)&&q.translations[lang].options.length===4).length;
+ $("count").textContent=bankQuestions.length+" questions total • "+visible.length+" shown • "+languageNames[lang]+": "+translatedCount+"/"+bankQuestions.length+" translated";
+ $("questions").innerHTML=visible.map(i=>{const q=bankQuestions[i],t=localizedAdminQuestion(q);return "<li class='question-item'><label class='question-select'><input type='checkbox' class='question-checkbox' data-select='"+i+"'><span><b>["+escapeHtml(q.category||"Uncategorized")+"]</b> Q"+(i+1)+". "+escapeHtml(t.question)+" <small>"+(t.translated?"✓ "+languageNames[lang]:"⚠ Translation missing — Hindi fallback")+"</small></span></label><button type='button' data-del='"+i+"' class='danger small-button'>Delete</button></li>"}).join("");
  $("quizStatus").textContent="Quiz Code: "+(quiz.id||"generate a code")+" • "+quiz.status;
  $("liveStatus").textContent=quiz.status==="live"?"🟢 QUIZ LIVE — शुरू हो चुका है • प्रश्न "+Math.min(current+1,questions.length)+" / "+questions.length+" • चलने का समय "+formatElapsed(Date.now()-Number(quiz.startAt||Date.now())):quiz.status==="starting"?"⏳ Quiz "+Math.max(0,Math.ceil((Number(quiz.startAt||0)-Date.now())/1000))+" सेकंड में शुरू होगा…":quiz.status==="completed"?"Quiz समाप्त हो गया है।":"Quiz अभी शुरू नहीं हुआ है।";
- $("preview").textContent=questions[current]?.question||"Question preview";
+ $("preview").textContent=localizedAdminQuestion(questions[current]||{}).question||"Question preview";
  $("questionProgress").textContent=questions.length?Math.min(current+1,questions.length)+" / "+questions.length:"0 / 0";
  const secs=Number(quiz.settings?.questionSeconds||10),started=Number(quiz.questionStartedAt||0);
  $("adminTimer").textContent=quiz.status==="live"?(Math.max(0,secs*1000-(Date.now()-started))/1000).toFixed(1)+" sec":"—";
@@ -127,6 +131,7 @@ function parseQuestions(data){
 }
 async function importJson(){const status=$("importStatus"),button=$("importJson");try{status.textContent="JSON पढ़ा जा रहा है…";button.disabled=true;let raw=$("jsonText").value.trim();const input=$("jsonFile"),file=input.files&&input.files[0];if(file)raw=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||""));reader.onerror=()=>reject(new Error("फ़ाइल पढ़ी नहीं जा सकी।"));reader.readAsText(file)});if(!raw)throw new Error("पहले JSON file चुनें या JSON text paste करें।");let data;try{data=JSON.parse(raw)}catch(e){throw new Error("JSON format गलत है: "+e.message)}const parsed=parseQuestions(data);if(!parsed.length)throw new Error("फ़ाइल में कोई question नहीं मिला।");bankQuestions.push(...parsed);questions=bankQuestions;save();status.textContent="✅ "+parsed.length+" प्रश्न import हुए। कुल प्रश्न: "+bankQuestions.length+"।";$("jsonText").value="";input.value=""}catch(e){console.error(e);status.textContent="❌ Import नहीं हुआ: "+(e.message||String(e))}finally{button.disabled=false}}
 $("categoryFilter").addEventListener("change",()=>{$("deleteStatus").textContent="Category: "+$("categoryFilter").selectedOptions[0].textContent;render()});
+$("questionLanguageFilter").addEventListener("change",()=>{render();$("deleteStatus").textContent="Preview language: "+languageNames[selectedQuestionLanguage()]+" — सिर्फ Admin preview बदलेगा।"});
 $("selectAllQuestions").onclick=()=>{const boxes=[...$("questions").querySelectorAll(".question-checkbox")];const all=boxes.length>0&&boxes.every(b=>b.checked);boxes.forEach(b=>b.checked=!all);$("deleteStatus").textContent=all?"चयन हटाया गया।":boxes.length+" visible प्रश्न चुने गए।";updateSelectionButton()};
 $("bulkDeleteQuestions").onclick=()=>{const selected=[...$("questions").querySelectorAll(".question-checkbox:checked")].map(b=>Number(b.dataset.select)).filter(Number.isInteger).sort((a,b)=>b-a);if(!selected.length){$("deleteStatus").textContent="पहले हटाने के लिए प्रश्न चुनें।";return}if(!confirm("क्या आप "+selected.length+" चुने हुए प्रश्न स्थायी रूप से हटाना चाहते हैं?"))return;selected.forEach(i=>{if(i>=0&&i<bankQuestions.length)bankQuestions.splice(i,1)});questions=bankQuestions;$("deleteStatus").textContent=selected.length+" प्रश्न हटा दिए गए।";save()};
 
