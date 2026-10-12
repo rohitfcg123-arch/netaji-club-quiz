@@ -62,7 +62,13 @@ onAuthStateChanged(auth, async user => {
     location.replace("index.html");
     return;
   }
-  $("signedInLabel").textContent = "Login: " + (user.email || "Google account");
+  const googleAuthenticated = user.providerData?.some(provider => provider.providerId === "google.com");
+  if (!googleAuthenticated) {
+    try { await signOut(auth); } catch (error) { console.error("Non-Google player sign-out:", error); }
+    location.replace("index.html");
+    return;
+  }
+  $("signedInLabel").textContent = "Google Login: " + (user.email || "Google account");
   const savedName = localStorage.getItem("ncQuizPendingName") ||
     localStorage.getItem("ncQuizPlayerName_" + user.uid) || user.displayName || "";
   $("playerName").value = savedName;
@@ -109,11 +115,24 @@ async function joinQuiz(code, name, isResume) {
     const playerRef = doc(db, "quizzes", code, "players", currentUser.uid);
     const playerSnap = await getDoc(playerRef);
     if (!playerSnap.exists()) {
-      await setDoc(playerRef, { name: playerName, joinedAt: serverTimestamp() });
+      if (!currentUser.email) { notice("Google Account की Email ID नहीं मिली। दूसरी Google ID से Login करें।"); return; }
+      await setDoc(playerRef, {
+        name: playerName,
+        email: currentUser.email,
+        photoURL: currentUser.photoURL || "",
+        joinedAt: serverTimestamp()
+      });
     } else {
-      // Preserve the name already registered for this authenticated player in this quiz.
-      playerName = playerSnap.data().name || playerName;
+      // UID is the stable identity; preserve the registered name and keep Google email current.
+      const existingPlayer = playerSnap.data();
+      playerName = existingPlayer.name || playerName;
       $("playerName").value = playerName;
+      if (currentUser.email && existingPlayer.email !== currentUser.email) {
+        await setDoc(playerRef, {
+          email: currentUser.email,
+          photoURL: currentUser.photoURL || ""
+        }, { merge: true });
+      }
     }
 
     activeCode = code;
@@ -198,7 +217,7 @@ function startListening(code) {
         updateTimer();
       }, error => {
         console.error("Question listener:", error);
-        waiting("प्रश्न लोड नहीं हो रहा। Firebase Rules और Internet जाँचें।");
+        waiting("प्रश्न लोड नहीं हो रहा। Google Login, Firebase Rules और Internet जाँचें।");
       });
     } else {
       updateTimer();
