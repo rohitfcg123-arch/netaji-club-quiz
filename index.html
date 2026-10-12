@@ -22,11 +22,11 @@
 </section>
 <section id="playerPanel" class="panel hidden">
 <div class="row"><span id="signedInLabel"></span><button id="logoutBtn" type="button">Logout</button></div>
-<form id="joinForm"><h3>Join the Quiz</h3><input id="quizCode" placeholder="Quiz Code" maxlength="32" required><input id="playerName" placeholder="अपना नाम लिखें" maxlength="40" required><button class="primary" type="submit">Join Quiz</button></form>
+<form id="joinForm"><h3>Join the Quiz</h3><input id="quizCode" placeholder="Quiz Code" maxlength="32" required><input id="playerName" placeholder="अपना नाम लिखें" maxlength="40" required><label for="quizLanguage">Choose question language / प्रश्नों की भाषा</label><select id="quizLanguage" aria-label="Question language"><option value="hi">हिंदी</option><option value="en">English</option><option value="bn">বাংলা</option></select><button class="primary" type="submit">Join Quiz</button></form>
 </section>
 <div id="notice" class="notice" aria-live="polite">Admin से Quiz Code लें। Quiz शुरू होने पर प्रश्न यहाँ दिखाई देंगे।</div>
 </section>
 <section id="game" class="card hidden"><div class="row"><span id="status" class="badge">Waiting</span><strong id="timer">—</strong></div><h2 id="question">प्रश्न यहाँ दिखेगा</h2><div id="options" class="options"></div><p id="feedback" aria-live="polite"></p><p>Score: <strong id="score">0</strong></p></section>
 </main>
-<script type="module" src="js/app.js?v=20261012-answer-timing-1"></script>
+<script type="module" src="js/app.js?v=20261012-multilingual-1"></script>
 </body></html>
