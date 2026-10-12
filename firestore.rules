@@ -91,6 +91,11 @@ service cloud.firestore {
         allow create, update, delete: if isAdmin();
       }
 
+      // Authoritative Firestore start markers are private to the allowlisted Admin.
+      match /questionTiming/{i} {
+        allow get, list, create, update, delete: if isAdmin();
+      }
+
       // Players can read only the key for a question after their one-time answer
       // has been saved. This enables immediate correct/incorrect feedback without
       // exposing future answer keys before the player locks in a choice.
