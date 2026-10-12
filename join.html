@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#fff4d8">
+<title>Quiz में शामिल हों | नेताजी क्लब</title>
+<link rel="stylesheet" href="css/styles.css?v=20261012-player-join-1">
+</head>
+<body>
+<header class="top">
+  <div class="brand">NC</div>
+  <div><small>Organized by</small><h1>नेताजी क्लब</h1><p>ज्ञान • संस्कृति • एकता</p></div>
+  <button id="logoutBtn" class="header-button" type="button">Logout</button>
+</header>
+<main>
+  <section id="joinPanel" class="card join-card">
+    <p class="eyebrow">🪷 सरस्वती पूजा क्विज़ प्रतियोगिता 🪷</p>
+    <h2>Quiz में शामिल हों</h2>
+    <p>अपना नाम और Admin से मिला Quiz Code डालें। फिर <strong>Start Quiz</strong> दबाएँ। Admin के Quiz शुरू करते ही प्रश्न अपने आप दिखने लगेंगे।</p>
+    <p id="signedInLabel" class="muted"></p>
+    <form id="joinForm" class="join-form">
+      <label for="playerName">आपका नाम</label>
+      <input id="playerName" placeholder="अपना नाम लिखें" maxlength="40" autocomplete="name" required>
+      <label for="quizCode">Quiz Code</label>
+      <input id="quizCode" placeholder="Admin से मिला Quiz Code" maxlength="32" autocapitalize="characters" required>
+      <button class="primary start-quiz-button" type="submit">Start Quiz</button>
+    </form>
+    <p id="notice" class="notice" aria-live="polite">Admin से Quiz Code लें। Start Quiz दबाने के बाद Waiting स्क्रीन खुलेगी।</p>
+  </section>
+  <section id="game" class="card hidden">
+    <div class="row"><span id="status" class="badge">Waiting</span><strong id="timer">—</strong></div>
+    <h2 id="question">Admin के Quiz शुरू करने का इंतज़ार है</h2>
+    <div id="options" class="options"></div>
+    <p id="feedback" aria-live="polite"></p>
+    <p>Score: <strong id="score">0</strong></p>
+    <p>Correct answers / सही जवाब: <strong id="correctCount">0</strong></p>
+  </section>
+</main>
+<script type="module" src="js/join.js?v=20261012-player-join-1"></script>
+</body>
+</html>
