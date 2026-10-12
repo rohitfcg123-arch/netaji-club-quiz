@@ -384,3 +384,6 @@ body.brand-themed.winners-page .w-section,
 body.brand-themed.winners-page .w-stage{background:var(--theme-surface)!important;border-color:var(--theme-border)!important;color:var(--theme-text)!important}
 body.brand-themed.winners-page .w-table th{color:var(--theme-primary)!important}
 body.brand-themed.winners-page .w-table td{border-color:var(--theme-border)!important}
+
+.host-footer-copy{font-size:clamp(8px,.7vw,12px)!important;opacity:.72}
+.w-brand{display:flex;align-items:center;gap:10px}.w-logo{display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;border-radius:50%;border:2px solid var(--theme-border,#d7aa59);background:var(--theme-primary,#8c2026);color:#fff;font-size:12px;font-weight:950;overflow:hidden}
