@@ -116,6 +116,7 @@ async function loadCurrentQuiz() {
   if (!snap.exists()) throw new Error("Firebase में Quiz Code " + code + " नहीं मिला।");
   const quiz = snap.data();
   loadedCurrentQuizCode = code;
+  localStorage.setItem("themeStudioLastQuizCode", code);
   const config = quiz.settings?.branding?.useDefaultTheme
     ? defaultBranding
     : quiz.settings?.branding || defaultBranding;
@@ -237,9 +238,21 @@ try {
 fillForm(BRANDING_DEFAULTS);
 onAuthStateChanged(auth, user => {
   if (!user) { authUser = null; return; }
-  ensureAdmin(user).then(() => {
+  ensureAdmin(user).then(async () => {
+    const lastQuizCode = String(localStorage.getItem("themeStudioLastQuizCode") || "").trim().toUpperCase();
+    const code = quizCode() || lastQuizCode;
+    if (code) {
+      $("tsQuizCode").value = code;
+      try {
+        await loadDefault();
+        await loadCurrentQuiz();
+        return;
+      } catch (error) {
+        console.warn("Could not restore last Theme Studio quiz; loading default branding instead.", error);
+      }
+    }
     $("tsStatus").textContent = "Admin verified. Loading saved default branding…";
-    return loadDefault();
+    await loadDefault();
   }).catch(error => {
     console.error("Theme Studio authorization/load failed:", error);
     setStatus("Admin verification or Firebase read failed: " + (error?.message || String(error)), "error");
