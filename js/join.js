@@ -1,4 +1,5 @@
 import { auth, db } from "./firebase.js";
+import { BRANDING_DEFAULTS, normalizeBranding, resolveBranding, applyBranding, listenForDefaultBranding } from "./branding.js";
 import { onAuthStateChanged, signOut, getIdTokenResult } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { doc, getDoc, onSnapshot, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
@@ -7,6 +8,12 @@ let currentUser = null;
 let activeCode = "";
 let playerName = "";
 let quizState = null;
+let globalBranding = normalizeBranding(BRANDING_DEFAULTS);
+let activeBranding = normalizeBranding(BRANDING_DEFAULTS);
+function refreshActiveBranding() {
+  activeBranding = resolveBranding(globalBranding, quizState?.settings?.branding);
+  applyBranding(activeBranding);
+}
 let unsubQuiz = null;
 let unsubQuestion = null;
 let currentIndex = -1;
@@ -219,6 +226,7 @@ function startListening(code) {
       return;
     }
     quizState = snapshot.data();
+    refreshActiveBranding();
     if (quizState.status === "completed") {
       completedNormally = true;
       setExamLock(false);
@@ -241,7 +249,7 @@ function startListening(code) {
     if (quizState.status !== "live") {
       setExamLock(false);
       if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
-      waiting("Admin के Quiz शुरू करने का इंतज़ार है");
+      waiting(activeBranding?.text?.waitingText || "Admin के Quiz शुरू करने का इंतज़ार है");
       currentIndex = -1;
       return;
     }
@@ -367,4 +375,9 @@ function updateTimer() {
     $("timer").textContent = Math.ceil(remainingMs / 1000) + " sec";
   }
 }
+listenForDefaultBranding((branding, error) => {
+  globalBranding = branding;
+  refreshActiveBranding();
+  if (error) console.warn("Default branding sync unavailable; using built-in theme:", error);
+});
 setInterval(updateTimer, 250);
