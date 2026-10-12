@@ -13,6 +13,21 @@ const hostMode = params.get("host") === "1";
 const requestedCode = (params.get("code") || "").trim().toUpperCase();
 let activeCode = "", playerName = "", quizState = null, unsubQuiz = null, unsubQuestion = null;
 let score = 0, answered = false, currentUser = null, currentIndex = -1, questionShownAt = 0;
+let selectedLanguage = localStorage.getItem("ncQuizLanguage") || "hi";
+const languageNames = { hi: "हिंदी", en: "English", bn: "বাংলা" };
+function localizedQuestion(q) {
+  const t = q && q.translations && q.translations[selectedLanguage];
+  if (t && typeof t.question === "string" && Array.isArray(t.options) && t.options.length === 4) return t;
+  return { question: q?.question || "", options: q?.options || [] };
+}
+const languageSelect = $("quizLanguage");
+if (languageSelect) {
+  languageSelect.value = ["hi","en","bn"].includes(selectedLanguage) ? selectedLanguage : "hi";
+  languageSelect.addEventListener("change", () => {
+    selectedLanguage = languageSelect.value;
+    localStorage.setItem("ncQuizLanguage", selectedLanguage);
+  });
+}
 
 function notice(t) { if ($("notice")) $("notice").textContent = t; }
 function authNotice(t) { if ($("authNotice")) $("authNotice").textContent = t; }
@@ -127,7 +142,7 @@ if (hostMode) {
         $("playerName").value = playerName;
       }
       showGame();
-      notice(playerName + ", आप Quiz से जुड़ गए हैं।");
+      notice(playerName + ", आप Quiz से जुड़ गए हैं। भाषा: " + (languageNames[selectedLanguage] || "हिंदी"));
       startListening(code);
     } catch (err) {
       console.error(err);
@@ -166,7 +181,7 @@ function startListening(code) {
       if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
       unsubQuestion = onSnapshot(doc(db, "quizzes", activeCode, "questions", String(idx)), qSnap => {
         if (!qSnap.exists()) { waiting("प्रश्न लोड हो रहा है…"); return; }
-        const q = qSnap.data();
+        const q = localizedQuestion(qSnap.data());
         questionShownAt = Number(quizState.questionStartedAt || Date.now());
         $("status").textContent = "LIVE";
         $("question").textContent = q.question || "";
