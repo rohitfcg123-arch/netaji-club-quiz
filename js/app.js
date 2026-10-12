@@ -46,7 +46,7 @@ function renderHostShell() {
   document.body.innerHTML = [
     '<div id="hostBoard" class="host-board">',
     ' <header class="host-header">',
-    '  <div class="host-brand"><div class="host-logo">NC</div><div><div class="host-brand-hi" data-brand-text="clubName">नेताजी क्लब</div><div class="host-brand-en" data-brand-text="competitionLabel">QUIZ COMPETITION</div><div class="host-motto" data-brand-text="tagline">ज्ञान • संस्कृति • एकता</div></div></div>',
+    '  <div class="host-brand"><div class="host-logo" data-brand-logo data-brand-logo-fallback="NC">NC</div><div><div class="host-brand-hi" data-brand-text="clubName">नेताजी क्लब</div><div class="host-brand-en" data-brand-text="competitionLabel">QUIZ COMPETITION</div><div class="host-motto" data-brand-text="tagline">ज्ञान • संस्कृति • एकता</div></div></div>',
     '  <div class="host-round"><span class="host-round-label" data-brand-text="roundName">ROUND 1</span><strong id="hostQuizName">Saraswati Puja Quiz</strong><span id="hostCategoryTop">General Knowledge</span></div>',
     '  <div class="host-clock-wrap"><div class="host-clock-ring" id="hostTimerRing"><div class="host-clock-inner"><strong id="timer">—</strong><small id="hostTimerUnit">SECONDS</small></div></div><div class="host-clock-caption" id="status">WAITING</div></div>',
     ' </header>',
