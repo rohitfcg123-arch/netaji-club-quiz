@@ -102,6 +102,7 @@ $("joinForm").addEventListener("submit", async event => {
 
 async function joinQuiz(code, name, isResume) {
   if (!currentUser) { notice("Login की जाँच हो रही है। एक पल रुकें।"); return; }
+  let stage = "Quiz Code पढ़ना";
   notice("Quiz Code जाँचा जा रहा है…");
   try {
     const quizRef = doc(db, "quizzes", code);
@@ -117,11 +118,13 @@ async function joinQuiz(code, name, isResume) {
       return;
     }
 
+    stage = "Firebase में खिलाड़ी की पहचान जाँचना";
     playerName = name;
     const playerRef = doc(db, "quizzes", code, "players", currentUser.uid);
     const playerSnap = await getDoc(playerRef);
     if (!playerSnap.exists()) {
       if (!currentUser.email) { notice("Google Account की Email ID नहीं मिली। दूसरी Google ID से Login करें।"); return; }
+      stage = "Firebase में खिलाड़ी का नाम और Google Email सेव करना";
       await setDoc(playerRef, {
         name: playerName,
         email: currentUser.email,
@@ -134,6 +137,7 @@ async function joinQuiz(code, name, isResume) {
       playerName = existingPlayer.name || playerName;
       $("playerName").value = playerName;
       if (currentUser.email && existingPlayer.email !== currentUser.email) {
+        stage = "Firebase में खिलाड़ी की Google Email अपडेट करना";
         await setDoc(playerRef, {
           email: currentUser.email,
           photoURL: currentUser.photoURL || ""
@@ -141,6 +145,7 @@ async function joinQuiz(code, name, isResume) {
       }
     }
 
+    stage = "Quiz में शामिल करना";
     activeCode = code;
     localStorage.setItem("ncQuizPlayerName_" + currentUser.uid, playerName);
     localStorage.setItem("ncQuizCode_" + currentUser.uid, activeCode);
@@ -151,7 +156,7 @@ async function joinQuiz(code, name, isResume) {
     startListening(code);
   } catch (error) {
     console.error("Join quiz:", error);
-    notice("Quiz Join नहीं हो पाया: " + authError(error) + " Firebase Rules जाँचें।");
+    notice("Quiz Join नहीं हो पाया (" + stage + "): " + authError(error) + " Firebase Console में Firestore Rules Publish करें।");
     if (isResume) localStorage.removeItem("ncQuizCode_" + currentUser.uid);
   }
 }
