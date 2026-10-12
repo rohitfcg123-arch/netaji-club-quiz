@@ -311,7 +311,7 @@ try {
 } catch {}
 fillForm(BRANDING_DEFAULTS);
 onAuthStateChanged(auth, user => {
-  if (!user) { authUser = null; return; }
+  if (!user) { authUser = null; location.replace("admin.html"); return; }
   ensureAdmin(user).then(async () => {
     const restoredDraft = restoreLocalDraft();
     if (restoredDraft) return;
@@ -322,5 +322,6 @@ onAuthStateChanged(auth, user => {
   }).catch(error => {
     console.error("Theme Studio authorization/load failed:", error);
     setStatus("Admin verification or Firebase read failed: " + (error?.message || String(error)), "error");
+    if (error?.message?.includes("approval") || error?.message?.includes("Google account") || error?.message?.includes("Google से login")) setTimeout(() => location.replace("admin.html"), 1200);
   });
 });
