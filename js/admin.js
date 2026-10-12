@@ -1,5 +1,5 @@
 import { db } from "./firebase.js";
-import { listenForDefaultBranding } from "./branding.js";
+import { listenForDefaultBranding } from "./branding.js?v=20261013-branding-2";
 import { collection, deleteDoc, doc, getDocs, onSnapshot, serverTimestamp, setDoc, Timestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 const $=id=>document.getElementById(id),KEY="netajiQuizLiveState";
 let questions=[],bankQuestions=[],current=0,quiz={id:"",name:"Saraswati Puja Quiz",status:"waiting",settings:{pointsPerCorrect:10,questionSeconds:10,questionLimit:100,startDelay:0},questions:[]},players=[],autoTimer=null,countdownTimer=null;
