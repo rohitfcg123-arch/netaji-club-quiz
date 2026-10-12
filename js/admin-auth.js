@@ -1,17 +1,13 @@
 import { auth, db } from "./firebase.js";
 import {
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signOut,
-  setPersistence,
-  browserLocalPersistence
+  onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut,
+  setPersistence, browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
+const ROOT_ADMIN = "rohit.fcg123@gmail.com";
 const gate = document.getElementById("adminAuthGate");
 const form = document.getElementById("adminLoginForm");
-const email = document.getElementById("adminEmail");
-const password = document.getElementById("adminPassword");
 const button = document.getElementById("adminLoginButton");
 const message = document.getElementById("adminAuthMessage");
 const logoutButton = document.getElementById("adminLogout");
@@ -28,14 +24,18 @@ function showGate(show) {
   if (gate) gate.style.display = show ? "grid" : "none";
   document.body.style.overflow = show ? "hidden" : "";
 }
-function adminDeniedError() {
-  const error = new Error("इस account को Admin permission नहीं मिली। Firestore में admins/{आपका UID} document और Boolean active=true जाँचें।");
-  error.code = "admin/not-authorized";
-  return error;
-}
+function normalizedEmail(user) { return String(user?.email || "").trim().toLowerCase(); }
+
 async function verifyAdmin(user) {
-  const snap = await getDoc(doc(db, "admins", user.uid));
-  if (!snap.exists() || snap.data()?.active !== true) throw adminDeniedError();
+  if (!user || !user.email) throw new Error("Google account ka email available nahi hai.");
+  const email = normalizedEmail(user);
+  if (email === ROOT_ADMIN) return;
+  const snap = await getDoc(doc(db, "approvedAdminEmails", email));
+  if (!snap.exists() || snap.data()?.active !== true || String(snap.data()?.email || "").toLowerCase() !== email) {
+    const error = new Error("Is Google account ko Admin approval nahi mila hai. Root Admin se approval lein.");
+    error.code = "admin/not-authorized";
+    throw error;
+  }
 }
 
 async function handleAdminLogout(event) {
@@ -46,69 +46,55 @@ async function handleAdminLogout(event) {
   }
   if (logoutInProgress) return;
   logoutInProgress = true;
-  if (logoutButton) {
-    logoutButton.disabled = true;
-    logoutButton.textContent = "Logging out…";
-  }
-  setMessage("Logout किया जा रहा है…");
+  if (logoutButton) { logoutButton.disabled = true; logoutButton.textContent = "Logging out…"; }
   try {
     await signOut(auth);
     authorizedUid = null;
-    if (password) password.value = "";
-    if (email) email.value = "";
     showGate(true);
-    setMessage("आप सुरक्षित रूप से Logout हो गए हैं।");
+    setMessage("Google account se logout ho gaye.");
   } catch (error) {
     console.error("Logout failed:", error);
-    setMessage("Logout नहीं हो पाया: " + (error?.message || "दोबारा कोशिश करें।"), true);
+    setMessage("Logout nahi hua: " + (error?.message || "Dobara try karein."), true);
   } finally {
     logoutInProgress = false;
-    if (logoutButton) {
-      logoutButton.disabled = false;
-      logoutButton.textContent = "Logout";
-    }
+    if (logoutButton) { logoutButton.disabled = false; logoutButton.textContent = "Logout"; }
   }
 }
-
-// Capture the click before any other page script can intercept it.
-document.addEventListener("click", (event) => {
+document.addEventListener("click", event => {
   const target = event.target instanceof Element ? event.target.closest("#adminLogout") : null;
   if (target) void handleAdminLogout(event);
 }, true);
 
-form?.addEventListener("submit", async (event) => {
+form?.addEventListener("submit", async event => {
   event.preventDefault();
-  if (!button || !email || !password) return;
+  if (!button) return;
   button.disabled = true;
-  setMessage("Login और Admin permission जाँची जा रही है…");
+  setMessage("Google account aur Admin approval verify ho raha hai…");
   try {
-    // Explicitly save the Firebase session in this browser across refreshes.
     await setPersistence(auth, browserLocalPersistence);
-    const credential = await signInWithEmailAndPassword(auth, email.value.trim(), password.value);
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    const credential = await signInWithPopup(auth, provider);
     await verifyAdmin(credential.user);
     authorizedUid = credential.user.uid;
     setMessage("Admin login successful.");
     showGate(false);
+    location.reload();
   } catch (error) {
-    console.error("Admin login failed:", error);
-    if (auth.currentUser && !authorizedUid && error?.code === "admin/not-authorized") {
-      // Sign out only after a confirmed missing/inactive admin allowlist record.
-      // Temporary network/Firestore failures must not destroy a valid Firebase session.
-      try { await signOut(auth); } catch (signOutError) { console.error(signOutError); }
+    console.error("Admin Google login failed:", error);
+    if (error?.code === "admin/not-authorized" && auth.currentUser) {
+      try { await signOut(auth); } catch (e) { console.error(e); }
     }
     const code = error?.code || "";
-    const friendly = code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found"
-      ? "Email या Password गलत है।"
-      : code === "auth/too-many-requests"
-      ? "बहुत बार प्रयास हुआ है। थोड़ी देर बाद कोशिश करें।"
-      : error?.message || "Login नहीं हो पाया।";
+    const friendly = code === "auth/popup-blocked" ? "Popup block ho gaya. Chrome mein popups allow karke retry karein."
+      : code === "auth/popup-closed-by-user" ? "Login window band ho gayi. Dobara Login with Google dabayein."
+      : code === "auth/unauthorized-domain" ? "Firebase Authentication ke Authorized domains mein rohitfcg123-arch.github.io add karein."
+      : error?.message || "Google login nahi ho paya.";
     setMessage(friendly, true);
-  } finally {
-    button.disabled = false;
-  }
+  } finally { button.disabled = false; }
 });
 
-onAuthStateChanged(auth, async (user) => {
+onAuthStateChanged(auth, async user => {
   if (!user) {
     authorizedUid = null;
     showGate(true);
@@ -118,20 +104,15 @@ onAuthStateChanged(auth, async (user) => {
     await verifyAdmin(user);
     authorizedUid = user.uid;
     showGate(false);
-    setMessage("Admin session verified.");
   } catch (error) {
     console.error("Admin authorization check failed:", error);
+    authorizedUid = null;
+    showGate(true);
     if (error?.code === "admin/not-authorized") {
-      authorizedUid = null;
-      showGate(true);
-      try { await signOut(auth); } catch (signOutError) { console.error(signOutError); }
+      try { await signOut(auth); } catch (e) { console.error(e); }
       setMessage(error.message, true);
     } else {
-      // Preserve the Firebase session, but do not reveal the admin dashboard until
-      // the allowlist check succeeds. Firestore Rules remain the security boundary.
-      authorizedUid = null;
-      showGate(true);
-      setMessage("आपका Firebase session बना हुआ है, लेकिन Admin permission अभी verify नहीं हो सकी। Internet/Firestore Rules जाँचें और page refresh करें। Logout नहीं किया गया। विवरण: " + (error?.message || "Unknown error"), true);
+      setMessage("Admin approval verify nahi ho saka. Internet/Firestore Rules check karein. " + (error?.message || ""), true);
     }
   }
 });
