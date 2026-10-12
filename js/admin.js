@@ -44,6 +44,19 @@ function initTimerSoundToggle() {
   });
 }
 initTimerSoundToggle();
+function primeAdminAudio() {
+  if (!timerSoundEnabled()) return;
+  try {
+    const AudioCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtor) return;
+    if (!adminAudioContext) adminAudioContext = new AudioCtor();
+    if (adminAudioContext.state === "suspended") adminAudioContext.resume().catch(() => {});
+  } catch (error) {
+    console.debug("Could not prime Admin timer audio:", error);
+  }
+}
+$("start")?.addEventListener("click", primeAdminAudio);
+$("openLiveScreen")?.addEventListener("click", primeAdminAudio);
 
 const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"{}")}catch{return {}}};
 let syncChain=Promise.resolve();
