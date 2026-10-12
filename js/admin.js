@@ -1,6 +1,6 @@
 import { db } from "./firebase.js";
 import { listenForDefaultBranding } from "./branding.js?v=20261013-branding-2";
-import { collection, deleteDoc, doc, getDocs, onSnapshot, serverTimestamp, setDoc, Timestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, serverTimestamp, setDoc, Timestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 const $=id=>document.getElementById(id),KEY="netajiQuizLiveState";
 let questions=[],bankQuestions=[],current=0,quiz={id:"",name:"Saraswati Puja Quiz",status:"waiting",settings:{pointsPerCorrect:10,questionSeconds:10,questionLimit:100,startDelay:0},questions:[]},players=[],autoTimer=null,countdownTimer=null;
 const languageNames={hi:"हिंदी",en:"English",bn:"বাংলা"};
@@ -253,6 +253,30 @@ async function beginLive(){
   stopTimers();
   if(!quiz.id) throw new Error("पहले Quiz Code generate करके Save Quiz करें।");
   if(!questions.length) throw new Error("पहले JSON से questions import करें।");
+  // Theme Studio can update the current quiz in a different tab/device. Refresh the
+  // persisted name/branding before starting so this dashboard cannot overwrite them
+  // with an older local cache. Current Admin timing inputs remain authoritative.
+  try {
+    const remoteSnap = await getDoc(doc(db, "quizzes", String(quiz.id).trim().toUpperCase()));
+    if (remoteSnap.exists()) {
+      const remote = remoteSnap.data();
+      const localSettings = { ...(quiz.settings || {}) };
+      quiz.name = remote.name || quiz.name;
+      quiz.settings = {
+        ...localSettings,
+        ...(remote.settings || {}),
+        questionSeconds: localSettings.questionSeconds,
+        questionLimit: localSettings.questionLimit,
+        startDelay: localSettings.startDelay,
+        timerSoundEnabled: $("timerSoundEnabled") ? $("timerSoundEnabled").checked : timerSoundEnabled()
+      };
+      if ($("quizName") && quiz.name) $("quizName").value = quiz.name;
+    }
+  } catch (syncError) {
+    console.error("Unable to refresh remote quiz settings before start:", syncError);
+    showStartError(syncError);
+    return;
+  }
   const delay=Math.max(0,Number(quiz.settings?.startDelay||0));
   const seconds=Math.max(5,Number(quiz.settings?.questionSeconds||10));
   quiz.status="waiting";
