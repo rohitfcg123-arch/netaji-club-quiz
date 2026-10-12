@@ -16,7 +16,48 @@ let activeQuestionData = null;
 let score = 0;
 let correctCount = 0;
 let selectedLanguage = localStorage.getItem("ncQuizLanguage") || "hi";
-const languageNames = { hi: "हिंदी", en: "English", bn: "বাংলা" };
+const languageSelect = $("quizLanguage");
+if (languageSelect) {
+  languageSelect.value = ["hi", "en", "bn"].includes(selectedLanguage) ? selectedLanguage : "hi";
+  languageSelect.addEventListener("change", () => {
+    selectedLanguage = languageSelect.value;
+    localStorage.setItem("ncQuizLanguage", selectedLanguage);
+    if (activeQuestionData && quizState?.status === "live") {
+      const q = localizedQuestion(activeQuestionData);
+      $("question").textContent = q.question || "";
+      [...$("options").children].forEach((button, i) => {
+        button.textContent = String.fromCharCode(65 + i) + ". " + (q.options?.[i] || "");
+      });
+    }
+  });
+}
+let examLocked = false;
+let completedNormally = false;
+
+function setExamLock(locked) {
+  examLocked = locked;
+  const logout = $("logoutBtn");
+  if (logout) {
+    logout.disabled = locked;
+    logout.textContent = locked ? "Exam चल रहा है" : "Logout";
+    logout.title = locked ? "Quiz समाप्त होने तक Logout उपलब्ध नहीं है।" : "Logout";
+  }
+  if (locked && !history.state?.quizLock) {
+    history.pushState({ quizLock: true }, "", location.href);
+  }
+}
+window.addEventListener("beforeunload", event => {
+  if (examLocked && !completedNormally) {
+    event.preventDefault();
+    event.returnValue = "";
+  }
+});
+window.addEventListener("popstate", () => {
+  if (examLocked && !completedNormally) {
+    history.pushState({ quizLock: true }, "", location.href);
+    notice("Quiz चल रहा है। Quiz समाप्त होने तक इसी पेज पर रहें। Refresh करने पर भी आपका Quiz यहीं खुलेगा।");
+  }
+});
 
 function notice(message) { $("notice").textContent = message; }
 function clearOptions() { $("options").innerHTML = ""; }
@@ -47,6 +88,10 @@ function stopListeners() {
 }
 
 $("logoutBtn").addEventListener("click", async () => {
+  if (examLocked && !completedNormally) {
+    notice("Quiz शुरू हो चुका है। Quiz समाप्त होने तक Logout नहीं कर सकते।");
+    return;
+  }
   stopListeners();
   try {
     await signOut(auth);
@@ -110,7 +155,10 @@ async function joinQuiz(code, name, isResume) {
     if (!snap.exists()) { notice("Quiz Code नहीं मिला। Admin से सही code लें।"); return; }
     const quiz = snap.data();
     if (quiz.status === "completed") {
-      notice("यह Quiz समाप्त हो चुका है। Admin से नया Quiz Code लें।");
+      completedNormally = true;
+      setExamLock(false);
+      localStorage.removeItem("ncQuizCode_" + currentUser.uid);
+      notice("यह Quiz समाप्त हो चुका है। अब आप Logout कर सकते हैं या नया Quiz Code ले सकते हैं।");
       return;
     }
     if (!["waiting", "starting", "live"].includes(quiz.status)) {
@@ -147,6 +195,7 @@ async function joinQuiz(code, name, isResume) {
 
     stage = "Quiz में शामिल करना";
     activeCode = code;
+    completedNormally = false;
     localStorage.setItem("ncQuizPlayerName_" + currentUser.uid, playerName);
     localStorage.setItem("ncQuizCode_" + currentUser.uid, activeCode);
     localStorage.removeItem("ncQuizPendingName");
@@ -171,14 +220,18 @@ function startListening(code) {
     }
     quizState = snapshot.data();
     if (quizState.status === "completed") {
+      completedNormally = true;
+      setExamLock(false);
+      localStorage.removeItem("ncQuizCode_" + currentUser.uid);
       $("status").textContent = "Completed";
-      $("question").textContent = "Quiz समाप्त हो गया।";
+      $("question").textContent = "Quiz समाप्त हो गया। अब आप Logout कर सकते हैं।";
       $("timer").textContent = "—";
       clearOptions();
       if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
       return;
     }
     if (quizState.status === "starting") {
+      setExamLock(true);
       $("status").textContent = "Starting";
       $("question").textContent = "क्विज़ शुरू होने वाला है…";
       clearOptions();
@@ -186,12 +239,14 @@ function startListening(code) {
       return;
     }
     if (quizState.status !== "live") {
+      setExamLock(false);
       if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
       waiting("Admin के Quiz शुरू करने का इंतज़ार है");
       currentIndex = -1;
       return;
     }
 
+    setExamLock(true);
     const index = Number(quizState.currentIndex || 0);
     if (index !== currentIndex) {
       currentIndex = index;
