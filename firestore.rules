@@ -77,7 +77,6 @@ service cloud.firestore {
         allow get: if isAdmin()
           || (
             googlePlayer()
-            && exists(/databases/$(database)/documents/quizzes/$(q)/players/$(request.auth.uid))
             && quizExists(q)
             && quiz(q).status == 'live'
             && request.time >= questionStart(q, int(i))
