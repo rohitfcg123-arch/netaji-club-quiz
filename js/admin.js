@@ -280,13 +280,20 @@ async function advanceQuestion(nextIndex){
   advancingQuestion=true;
   const previous={current,questionStartedAt:quiz.questionStartedAt};
   try{
-    // Write the server-side timing marker before publishing the new question index.
-    await markQuestionStarted(nextIndex);
+    // Publish the next question first so a timing-marker permission issue can never
+    // freeze the exam at 0 seconds. Keep the server marker as a separate best-effort write.
     current=nextIndex;
     quiz.currentIndex=nextIndex;
     quiz.questionStartedAt=Date.now();
     await persist();
     render();
+    try{
+      await markQuestionStarted(nextIndex);
+    }catch(timingError){
+      console.error("Server timing marker unavailable for question "+nextIndex,timingError);
+      const status=$("liveStatus");
+      if(status)status.textContent="🟢 प्रश्न आगे बढ़ गया है। समय के सटीक रिकॉर्ड के लिए Firebase Rules जाँचें।";
+    }
     return true;
   }catch(error){
     current=previous.current;
