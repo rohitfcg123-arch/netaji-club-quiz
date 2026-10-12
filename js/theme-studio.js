@@ -1,7 +1,7 @@
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged, getIdTokenResult } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { collection, doc, getDoc, getDocs, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import { BRANDING_DEFAULTS, BRANDING_PRESETS, normalizeBranding, applyBranding } from "./branding.js?v=20261013-branding-2";
+import { BRANDING_DEFAULTS, BRANDING_PRESETS, BRANDING_PRESET_TEXT, normalizeBranding, applyBranding } from "./branding.js?v=20261013-occasion-text-1";
 
 const $ = id => document.getElementById(id);
 const TEXT_FIELDS = {
@@ -264,26 +264,39 @@ async function useDefaultForCurrent() {
   } finally { setBusy(false); }
 }
 
-document.querySelectorAll("[data-preset]").forEach(button => button.addEventListener("click", () => {
-  formDirty = true;
-  const preset = BRANDING_PRESETS[button.dataset.preset];
+let warnedAboutFestivalEdit = false;
+function applyPresetToForm(presetKey) {
+  const preset = BRANDING_PRESETS[presetKey];
   if (!preset) return;
   const old = collectForm();
+  const presetText = BRANDING_PRESET_TEXT[presetKey] || {};
   fillForm({
     ...old,
-    preset: button.dataset.preset,
+    preset: presetKey,
     colors: { ...preset.colors },
-    effects: { ...preset.effects }
+    effects: { ...preset.effects },
+    text: presetKey === "custom" ? old.text : { ...old.text, ...presetText }
   });
-  // fillForm resets formDirty for normal loads; selecting a preset is an edit.
   formDirty = true;
+  warnedAboutFestivalEdit = false;
   updateSaveLabel();
   saveLocalDraft();
-  setStatus(preset.label + " preset selected. Preview देखो और फिर save/apply करो.");
+  setStatus(preset.label + " theme selected: colours and occasion-specific text loaded. Preview देखें और Save/Apply करें.", "success");
+}
+document.querySelectorAll("[data-preset]").forEach(button => button.addEventListener("click", () => {
+  const presetKey = button.dataset.preset;
+  if (formDirty && selectedTarget() === "current" && !window.confirm("Theme बदलने से इस form के unsaved changes replace हो सकते हैं। क्या आगे बढ़ना है?")) return;
+  applyPresetToForm(presetKey);
 }));
-Object.values(COLOR_FIELDS).forEach(id => $(id).addEventListener("input", () => { formDirty = true; currentBranding = { ...collectForm(), preset: "custom" }; saveLocalDraft(); document.querySelectorAll("[data-preset]").forEach(b => b.classList.toggle("active", b.dataset.preset === "custom")); renderPreview(); }));
-Object.values(TEXT_FIELDS).forEach(id => $(id).addEventListener("input", () => { formDirty = true; renderPreview(); saveLocalDraft(); }));
-["tsLogoUrl","tsBackgroundUrl","tsDecorations","tsAnimations"].forEach(id => $(id).addEventListener("input", () => { formDirty = true; renderPreview(); saveLocalDraft(); }));
+function allowFestivalEdit() {
+  if (currentBranding.preset === "custom" || warnedAboutFestivalEdit) return true;
+  const ok = window.confirm("⚠️ आप एक predefined festival theme edit कर रहे हैं। बदलाव इस saved theme/quiz की branding को बदल सकते हैं। Continue Editing?");
+  if (ok) { warnedAboutFestivalEdit = true; return true; }
+  return false;
+}
+Object.values(COLOR_FIELDS).forEach(id => $(id).addEventListener("input", () => { if (!allowFestivalEdit()) { applyPresetToForm(currentBranding.preset); return; } formDirty = true; currentBranding = { ...collectForm(), preset: "custom" }; saveLocalDraft(); document.querySelectorAll("[data-preset]").forEach(b => b.classList.toggle("active", b.dataset.preset === "custom")); renderPreview(); }));
+Object.values(TEXT_FIELDS).forEach(id => $(id).addEventListener("input", () => { if (!allowFestivalEdit()) { applyPresetToForm(currentBranding.preset); return; } formDirty = true; renderPreview(); saveLocalDraft(); }));
+["tsLogoUrl","tsBackgroundUrl","tsDecorations","tsAnimations"].forEach(id => $(id).addEventListener("input", () => { if (!allowFestivalEdit()) { applyPresetToForm(currentBranding.preset); return; } formDirty = true; renderPreview(); saveLocalDraft(); }));
 document.querySelectorAll('input[name="tsTarget"]').forEach(el => el.addEventListener("change", updateSaveLabel));
 $("tsSaveSelected").addEventListener("click", saveSelected);
 $("tsLoadDefault").addEventListener("click", async () => {
