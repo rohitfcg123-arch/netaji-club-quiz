@@ -3,6 +3,48 @@ import { collection, deleteDoc, doc, getDocs, onSnapshot, serverTimestamp, setDo
 const $=id=>document.getElementById(id),KEY="netajiQuizLiveState";
 let questions=[],bankQuestions=[],current=0,quiz={id:"",name:"Saraswati Puja Quiz",status:"waiting",settings:{pointsPerCorrect:10,questionSeconds:10,questionLimit:100,startDelay:0},questions:[]},players=[],autoTimer=null,countdownTimer=null;
 const languageNames={hi:"हिंदी",en:"English",bn:"বাংলা"};
+
+let adminAudioContext = null;
+let lastAdminTickKey = "";
+function timerSoundEnabled() {
+  return localStorage.getItem("ncTimerSoundEnabled") !== "false";
+}
+function playAdminTimerTick(remaining, scope = "question") {
+  if (!timerSoundEnabled() || Number(remaining) <= 0) return;
+  const marker = String(scope) + ":" + String(current) + ":" + String(remaining);
+  if (marker === lastAdminTickKey) return;
+  lastAdminTickKey = marker;
+  try {
+    const AudioCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtor) return;
+    if (!adminAudioContext) adminAudioContext = new AudioCtor();
+    if (adminAudioContext.state === "suspended") adminAudioContext.resume().catch(() => {});
+    const oscillator = adminAudioContext.createOscillator();
+    const gain = adminAudioContext.createGain();
+    oscillator.type = "square";
+    oscillator.frequency.value = 880;
+    gain.gain.setValueAtTime(0.0001, adminAudioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.04, adminAudioContext.currentTime + 0.006);
+    gain.gain.exponentialRampToValueAtTime(0.0001, adminAudioContext.currentTime + 0.055);
+    oscillator.connect(gain);
+    gain.connect(adminAudioContext.destination);
+    oscillator.start();
+    oscillator.stop(adminAudioContext.currentTime + 0.06);
+  } catch (error) {
+    console.debug("Admin timer sound unavailable:", error);
+  }
+}
+function initTimerSoundToggle() {
+  const toggle = $("timerSoundEnabled");
+  if (!toggle) return;
+  toggle.checked = timerSoundEnabled();
+  toggle.addEventListener("change", () => {
+    localStorage.setItem("ncTimerSoundEnabled", String(toggle.checked));
+    if (toggle.checked) playAdminTimerTick(1, "toggle-preview");
+  });
+}
+initTimerSoundToggle();
+
 const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"{}")}catch{return {}}};
 let syncChain=Promise.resolve();
 let advancingQuestion=false;
@@ -223,6 +265,7 @@ async function beginLive(){
       $("liveStatus").textContent="⏳ Player Portal पर countdown चल रहा है…";
       const tick=async()=>{
         const remaining=Math.max(0,Math.ceil((Number(quiz.startAt)-Date.now())/1000));
+        playAdminTimerTick(remaining, "start");
         $("adminTimer").textContent=remaining+" sec";
         $("liveStatus").textContent=remaining>0
           ?"⏳ Quiz "+remaining+" सेकंड में शुरू होगा — Player Portal पर भी countdown चल रहा है"
@@ -265,6 +308,8 @@ function runQuestionTimer(){
     if(quiz.status!=="live"){clearInterval(autoTimer);autoTimer=null;return}
     if(advancingQuestion)return;
     const duration=Number(quiz.settings?.questionSeconds||10)*1000;
+    const remaining=Math.max(0,Math.ceil((duration-(Date.now()-Number(quiz.questionStartedAt||0)))/1000));
+    playAdminTimerTick(remaining, "question");
     if(Date.now()-Number(quiz.questionStartedAt||0)>=duration){
       if(current<questions.length-1){
         await advanceQuestion(current+1);
