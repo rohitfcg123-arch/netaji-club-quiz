@@ -64,7 +64,8 @@ if (hostMode) {
   if (requestedCode) startListening(requestedCode);
   else waiting("Quiz Code नहीं मिला।");
 } else {
-  // Mobile-friendly Google sign-in: redirect avoids popup blockers in Android browsers.
+  // Login happens here. After Firebase confirms authentication, take players
+  // to a dedicated page that contains only their name and Quiz Code.
   $("googleLoginBtn").addEventListener("click", async () => {
     authNotice("Google Login खोला जा रहा है…");
     try {
@@ -79,7 +80,7 @@ if (hostMode) {
   });
 
   getRedirectResult(auth).then(result => {
-    if (result?.user) authNotice("Google Login सफल हुआ। अब अपना नाम भरकर Quiz join करें।");
+    if (result?.user) authNotice("Google Login सफल हुआ। आगे बढ़ रहे हैं…");
   }).catch(err => {
     console.error("Google redirect result:", err);
     authNotice(authError(err));
@@ -91,7 +92,7 @@ if (hostMode) {
     try {
       await setPersistence(auth, browserLocalPersistence);
       await signInWithEmailAndPassword(auth, $("authEmail").value.trim(), $("authPassword").value);
-      authNotice("Login सफल हुआ।");
+      authNotice("Login सफल हुआ। आगे बढ़ रहे हैं…");
     } catch (err) {
       console.error(err);
       authNotice(authError(err));
@@ -107,77 +108,23 @@ if (hostMode) {
     authNotice("अकाउंट बनाया जा रहा है…");
     try {
       await setPersistence(auth, browserLocalPersistence);
+      localStorage.setItem("ncQuizPendingName", name);
       const credential = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(credential.user, { displayName: name });
-      $("authName").value = name;
-      authNotice("अकाउंट बन गया! अब Quiz Code डालकर Join करें।");
+      authNotice("अकाउंट बन गया! आगे बढ़ रहे हैं…");
     } catch (err) {
       console.error(err);
       authNotice(authError(err));
     }
   });
 
-  $("logoutBtn").addEventListener("click", async () => {
-    try { await signOut(auth); notice("आप Logout हो गए हैं।"); }
-    catch (e) { notice("Logout नहीं हो पाया: " + authError(e)); }
-  });
-
   onAuthStateChanged(auth, user => {
-    currentUser = user;
-    $("authPanel").classList.toggle("hidden", !!user);
-    $("playerPanel").classList.toggle("hidden", !user);
-    if (user) {
-      const suggestedName = user.displayName || $("authName").value.trim() || "";
-      $("signedInLabel").textContent = "Logged in: " + (user.email || "");
-      $("playerName").value = suggestedName;
-      authNotice("");
-    } else {
-      if (unsubQuiz) { unsubQuiz(); unsubQuiz = null; }
-      if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
-      $("game").classList.add("hidden");
-    }
-  });
-
-  $("joinForm").addEventListener("submit", async e => {
-    e.preventDefault();
-    if (!currentUser) { notice("पहले Google या Email से Login करें।"); return; }
-    const code = $("quizCode").value.trim().toUpperCase();
-    playerName = $("playerName").value.trim();
-    if (!code || !playerName) { notice("Quiz Code और नाम भरें।"); return; }
-    if (playerName.length > 40) { notice("नाम 40 अक्षरों से छोटा रखें।"); return; }
-    notice("Firebase से Quiz जाँचा जा रहा है…");
-    try {
-      const snap = await getDoc(doc(db, "quizzes", code));
-      if (!snap.exists()) { notice("Quiz Code नहीं मिला। Admin से सही code लें।"); return; }
-      const quiz = snap.data();
-      if (quiz.status === "completed") { notice("यह क्विज़ समाप्त हो चुका है।"); return; }
-      if (!["waiting", "starting", "live"].includes(quiz.status)) {
-        notice("यह Quiz अभी Join नहीं किया जा सकता।"); return;
-      }
-      const playerRef = doc(db, "quizzes", code, "players", currentUser.uid);
-      const playerSnap = await getDoc(playerRef);
-      if (!playerSnap.exists()) {
-        await setDoc(playerRef, {
-          name: playerName, joinedAt: serverTimestamp()
-        });
-      } else if (playerSnap.data().name !== playerName) {
-        notice("Aap is quiz mein pehle se join kar chuke hain. Wahi naam use karein: " + playerSnap.data().name);
-        playerName = playerSnap.data().name;
-        $("playerName").value = playerName;
-      }
-      score = 0; correctCount = 0;
-      if ($("score")) $("score").textContent = "0";
-      if ($("correctCount")) $("correctCount").textContent = "0";
-      showGame();
-      notice(playerName + ", आप Quiz से जुड़ गए हैं। Admin के शुरू करने तक Waiting में रहें। भाषा: " + (languageNames[selectedLanguage] || "हिंदी"));
-      startListening(code);
-    } catch (err) {
-      console.error(err);
-      notice("Join नहीं हो पाया: " + authError(err) + " (Firebase Rules जाँचें)");
-    }
+    if (!user) return;
+    const typedName = $("authName")?.value.trim();
+    if (typedName && !user.displayName) localStorage.setItem("ncQuizPendingName", typedName);
+    location.replace("join.html");
   });
 }
-
 function startListening(code) {
   activeCode = String(code).toUpperCase();
   if (unsubQuiz) unsubQuiz();
