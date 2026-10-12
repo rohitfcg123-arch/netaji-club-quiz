@@ -25,13 +25,23 @@ async function loadResults(){
   const qref=doc(db,"quizzes",code),quizSnap=await getDoc(qref);
   if(!quizSnap.exists())throw new Error("Firebase में Quiz "+code+" नहीं मिला।");
   const quiz=quizSnap.data();
-  const [playerSnap,answerSnap,keySnap,questionSnap]=await Promise.all([
-   getDocs(collection(db,"quizzes",code,"players")),getDocs(collection(db,"quizzes",code,"answers")),getDocs(collection(db,"quizzes",code,"keys")),getDocs(collection(db,"quizzes",code,"questions"))
+  const [playerSnap,answerSnap,keySnap,questionSnap,resultSnap]=await Promise.all([
+   getDocs(collection(db,"quizzes",code,"players")),getDocs(collection(db,"quizzes",code,"answers")),getDocs(collection(db,"quizzes",code,"keys")),getDocs(collection(db,"quizzes",code,"questions")),getDocs(collection(db,"quizzes",code,"results"))
   ]);
   const players=playerSnap.docs.map(d=>({uid:d.id,...d.data()})),answers=answerSnap.docs.map(d=>d.data());
   const keys=new Map(keySnap.docs.map(d=>[String(d.id),Number(d.data().correctIndex)]));
+  const savedResults=new Map(resultSnap.docs.map(d=>[d.id,d.data()]));
   const total=Math.max(1,Number(quiz.count||questionSnap.size||local.questions?.length||0));
-  const rows=players.map(p=>{const mine=answers.filter(a=>a.uid===p.uid);const correct=mine.filter(a=>keys.get(String(a.q))===Number(a.sel)).length;const totalMs=mine.reduce((s,a)=>s+Math.max(0,Number(a.elapsedMs||0)),0);return {...p,correct,answered:mine.length,totalMs,score:correct*Number(quiz.settings?.pointsPerCorrect||10)}}).sort((a,b)=>b.correct-a.correct||a.totalMs-b.totalMs||String(a.name||"").localeCompare(String(b.name||""))).map((p,i)=>({...p,rank:i+1}));
+  const rows=players.map(p=>{
+    const mine=answers.filter(a=>a.uid===p.uid);
+    const saved=savedResults.get(p.uid);
+    const correct=saved?Number(saved.correct||0):mine.filter(a=>keys.get(String(a.q))===Number(a.sel)).length;
+    const answered=saved?Number(saved.answered||0):mine.length;
+    const totalMs=saved?Number(saved.totalSolveMs||0):mine.reduce((s,a)=>s+Math.max(0,Number(a.elapsedMs||0)),0);
+    const completed=saved?Boolean(saved.completed):mine.length>=total;
+    const score=saved?Number(saved.score||0):correct*Number(quiz.settings?.pointsPerCorrect||10);
+    return {...p,correct,answered,totalMs,completed,score};
+  }).sort((a,b)=>b.correct-a.correct||(a.completed!==b.completed?(a.completed?-1:1):a.totalMs-b.totalMs)||String(a.name||"").localeCompare(String(b.name||""))).map((p,i)=>({...p,rank:i+1}));
   activeRows=rows;$("wQuizStatus").textContent=(quiz.name||"Quiz")+" · "+code+" · "+(quiz.status==="completed"?"Quiz completed":"Current results");
   showRows(rows,total);showMessage("Results verified from Firebase. Admin-only view.");
  }catch(e){console.error(e);$("wPodiums").innerHTML='<div class="w-empty">⚠️ '+esc(e.message||"Results load नहीं हुए")+'</div>';$("wRows").innerHTML='<tr><td colspan="6">Results load नहीं हुए।</td></tr>';showMessage(e.message||"Firebase Rules और Quiz Code जाँचें।")}
