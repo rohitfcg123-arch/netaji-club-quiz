@@ -254,6 +254,8 @@ function startListening(code) {
       if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
       unsubQuestion = onSnapshot(doc(db, "quizzes", activeCode, "questions", String(index)), async questionSnap => {
         if (!questionSnap.exists()) { waiting("प्रश्न लोड हो रहा है…"); return; }
+        // Ignore late callbacks from an older question.
+        if (currentIndex !== index) return;
         activeQuestionData = questionSnap.data();
         const q = localizedQuestion(activeQuestionData);
         questionShownAt = Number(quizState?.questionStartedAt || Date.now());
@@ -266,16 +268,17 @@ function startListening(code) {
           button.type = "button";
           button.dataset.optionIndex = String(i);
           button.textContent = String.fromCharCode(65 + i) + ". " + option;
-          button.addEventListener("click", () => submitAnswer(i));
+          button.addEventListener("click", () => submitAnswer(i, index));
           $("options").appendChild(button);
         });
 
         // After refresh, restore and lock an answer that the player already submitted.
         try {
-          const prior = await getDoc(doc(db, "quizzes", activeCode, "answers", currentUser.uid + "_" + currentIndex));
+          const prior = await getDoc(doc(db, "quizzes", activeCode, "answers", currentUser.uid + "_" + index));
+          if (currentIndex !== index) return;
           if (prior.exists()) {
             answered = true;
-            await displayAnswerFeedback(Number(prior.data().sel), q, true);
+            await displayAnswerFeedback(Number(prior.data().sel), q, true, index);
           }
         } catch (error) {
           console.warn("Could not restore previous answer state:", error);
@@ -294,8 +297,8 @@ function startListening(code) {
   });
 }
 
-async function displayAnswerFeedback(selected, q, fromPrevious = false) {
-  const keySnap = await getDoc(doc(db, "quizzes", activeCode, "keys", String(currentIndex)));
+async function displayAnswerFeedback(selected, q, fromPrevious = false, questionIndex = currentIndex) {
+  const keySnap = await getDoc(doc(db, "quizzes", activeCode, "keys", String(questionIndex)));
   if (!keySnap.exists()) throw new Error("Correct answer key is not available.");
   const correctIndex = Number(keySnap.data().correctIndex);
   if (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex > 3) throw new Error("Correct answer key is invalid.");
@@ -319,30 +322,31 @@ async function displayAnswerFeedback(selected, q, fromPrevious = false) {
   $("correctCount").textContent = String(correctCount);
 }
 
-async function submitAnswer(selected) {
-  if (answered || !currentUser || !activeCode || !quizState || quizState.status !== "live") return;
+async function submitAnswer(selected, questionIndex = currentIndex) {
+  if (answered || questionIndex !== currentIndex || !currentUser || !activeCode || !quizState || quizState.status !== "live") return;
   answered = true;
   [...$("options").children].forEach(button => { button.disabled = true; });
   try {
-    await setDoc(doc(db, "quizzes", activeCode, "answers", currentUser.uid + "_" + currentIndex), {
+    await setDoc(doc(db, "quizzes", activeCode, "answers", currentUser.uid + "_" + questionIndex), {
       uid: currentUser.uid,
-      q: currentIndex,
+      q: questionIndex,
       sel: selected,
       at: serverTimestamp(),
-      elapsedMs: Math.max(0, Math.min(
-        Number(quizState.settings?.questionSeconds || 10) * 1000,
-        Date.now() - Number(questionShownAt || quizState.questionStartedAt || Date.now())
-      ))
+      // Compatibility only. Ranking uses timestamps created by Firestore.
+      elapsedMs: 0
     });
   } catch (error) {
     console.error("Answer submit:", error);
-    answered = false;
-    $("feedback").textContent = "जवाब जमा नहीं हुआ: " + authError(error);
-    [...$("options").children].forEach(button => { button.disabled = false; });
+    // Do not re-enable the previous question's buttons after the UI has advanced.
+    if (questionIndex === currentIndex) {
+      answered = false;
+      $("feedback").textContent = "जवाब जमा नहीं हुआ: " + authError(error);
+      [...$("options").children].forEach(button => { button.disabled = false; });
+    }
     return;
   }
   try {
-    await displayAnswerFeedback(selected, localizedQuestion(activeQuestionData || {}));
+    await displayAnswerFeedback(selected, localizedQuestion(activeQuestionData || {}), false, questionIndex);
   } catch (error) {
     console.error("Answer feedback:", error);
     $("feedback").textContent = "✅ आपका जवाब लॉक हो गया है। सही उत्तर दिखाने में समस्या हुई; जवाब बदला नहीं जा सकता।";
@@ -356,7 +360,7 @@ function updateTimer() {
   } else if (quizState.status === "live") {
     const seconds = Number(quizState.settings?.questionSeconds || 10);
     const remainingMs = Math.max(0, seconds * 1000 - (Date.now() - Number(quizState.questionStartedAt || Date.now())));
-    $("timer").textContent = (remainingMs / 1000).toFixed(1) + " sec";
+    $("timer").textContent = Math.ceil(remainingMs / 1000) + " sec";
   }
 }
 setInterval(updateTimer, 250);
