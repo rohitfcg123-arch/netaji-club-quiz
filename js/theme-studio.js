@@ -24,6 +24,7 @@ let loadedCurrentQuizCode = "";
 let formDirty = false;
 
 const DRAFT_KEY = "themeStudioUnsavedDraft";
+const TARGET_KEY = "themeStudioLastTarget";
 function saveLocalDraft() {
   try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ code: quizCode(), target: selectedTarget(), branding: collectForm(), savedAt: Date.now() })); } catch {}
 }
@@ -200,6 +201,7 @@ async function saveDefault(config) {
   }, { merge: true });
   defaultBranding = normalizeBranding({ ...config, updatedAt: new Date() });
   currentBranding = defaultBranding;
+  localStorage.setItem(TARGET_KEY, "default");
   clearLocalDraft();
   setStatus("✅ Default branding saved to Firebase. Connected screens will receive the theme in real time.", "success");
 }
@@ -220,6 +222,8 @@ async function saveCurrent(config) {
     }},
     updatedAt: serverTimestamp()
   }, { merge: true });
+  localStorage.setItem(TARGET_KEY, "current");
+  localStorage.setItem("themeStudioLastQuizCode", code);
   clearLocalDraft();
   setStatus(loadedForRename ? ('✅ Branding and quiz name saved for "' + nextQuizName + '". Other quizzes are unchanged.') : ('✅ Branding saved for "' + nextQuizName + '". Existing quiz name was kept; load this quiz first to rename it.'), "success");
 }
@@ -250,6 +254,9 @@ async function useDefaultForCurrent() {
       settings: { ...(old.settings || {}), branding: { useDefaultTheme: true } },
       updatedAt: serverTimestamp()
     }, { merge: true });
+    localStorage.setItem(TARGET_KEY, "current");
+    localStorage.setItem("themeStudioLastQuizCode", code);
+    clearLocalDraft();
     setStatus("✅ This quiz will now follow the saved default branding in real time.", "success");
   } catch (error) {
     console.error(error);
@@ -315,10 +322,23 @@ onAuthStateChanged(auth, user => {
   ensureAdmin(user).then(async () => {
     const restoredDraft = restoreLocalDraft();
     if (restoredDraft) return;
-    document.querySelector('input[name="tsTarget"][value="default"]').checked = true;
-    updateSaveLabel();
-    $("tsStatus").textContent = "Admin verified. Loading saved default branding…";
+    $("tsStatus").textContent = "Admin verified. Loading saved branding…";
     await loadDefault();
+    const savedTarget = localStorage.getItem(TARGET_KEY) || "default";
+    const savedCode = String($("tsQuizCode").value || "").trim().toUpperCase();
+    if (savedTarget === "current" && savedCode) {
+      document.querySelector('input[name="tsTarget"][value="current"]').checked = true;
+      try {
+        await loadCurrentQuiz();
+      } catch (error) {
+        document.querySelector('input[name="tsTarget"][value="default"]').checked = true;
+        updateSaveLabel();
+        setStatus("Saved default branding loaded. Previous quiz settings could not be loaded: " + (error?.message || String(error)), "error");
+      }
+    } else {
+      document.querySelector('input[name="tsTarget"][value="default"]').checked = true;
+      updateSaveLabel();
+    }
   }).catch(error => {
     console.error("Theme Studio authorization/load failed:", error);
     setStatus("Admin verification or Firebase read failed: " + (error?.message || String(error)), "error");
