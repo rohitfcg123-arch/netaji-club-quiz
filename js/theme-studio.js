@@ -23,6 +23,27 @@ let busy = false;
 let loadedCurrentQuizCode = "";
 let formDirty = false;
 
+const DRAFT_KEY = "themeStudioUnsavedDraft";
+function saveLocalDraft() {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ code: quizCode(), target: selectedTarget(), branding: collectForm(), savedAt: Date.now() })); } catch {}
+}
+function clearLocalDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch {} }
+function restoreLocalDraft() {
+  try {
+    const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
+    if (!draft || !draft.branding || Date.now() - Number(draft.savedAt || 0) > 604800000) return false;
+    if (draft.code) $("tsQuizCode").value = draft.code;
+    fillForm(draft.branding);
+    const target = document.querySelector("input[name=tsTarget][value=" + (draft.target === "current" ? "current" : "default") + "]");
+    if (target) target.checked = true;
+    formDirty = true;
+    updateSaveLabel();
+    setStatus("⚠️ पिछला draft वापस लाया गया है। स्थायी रूप से सेव करने के लिए Apply/Save पर क्लिक करें।");
+    return true;
+  } catch { return false; }
+}
+
+
 function setStatus(message, type = "") {
   const el = $("tsStatus");
   el.textContent = message;
@@ -136,6 +157,7 @@ async function saveDefault(config) {
   }, { merge: true });
   defaultBranding = normalizeBranding({ ...config, updatedAt: new Date() });
   currentBranding = defaultBranding;
+  clearLocalDraft();
   setStatus("✅ Default branding saved to Firebase. Connected screens will receive the theme in real time.", "success");
 }
 async function saveCurrent(config) {
@@ -202,11 +224,12 @@ document.querySelectorAll("[data-preset]").forEach(button => button.addEventList
     colors: { ...preset.colors },
     effects: { ...preset.effects }
   });
+  saveLocalDraft();
   setStatus(preset.label + " preset selected. Preview देखो और फिर save/apply करो.");
 }));
-Object.values(COLOR_FIELDS).forEach(id => $(id).addEventListener("input", () => { formDirty = true; currentBranding = { ...collectForm(), preset: "custom" }; document.querySelectorAll("[data-preset]").forEach(b => b.classList.toggle("active", b.dataset.preset === "custom")); renderPreview(); }));
-Object.values(TEXT_FIELDS).forEach(id => $(id).addEventListener("input", () => { formDirty = true; renderPreview(); }));
-["tsLogoUrl","tsBackgroundUrl","tsDecorations","tsAnimations"].forEach(id => $(id).addEventListener("input", () => { formDirty = true; renderPreview(); }));
+Object.values(COLOR_FIELDS).forEach(id => $(id).addEventListener("input", () => { formDirty = true; currentBranding = { ...collectForm(), preset: "custom" }; saveLocalDraft(); document.querySelectorAll("[data-preset]").forEach(b => b.classList.toggle("active", b.dataset.preset === "custom")); renderPreview(); }));
+Object.values(TEXT_FIELDS).forEach(id => $(id).addEventListener("input", () => { formDirty = true; renderPreview(); saveLocalDraft(); }));
+["tsLogoUrl","tsBackgroundUrl","tsDecorations","tsAnimations"].forEach(id => $(id).addEventListener("input", () => { formDirty = true; renderPreview(); saveLocalDraft(); }));
 document.querySelectorAll('input[name="tsTarget"]').forEach(el => el.addEventListener("change", updateSaveLabel));
 $("tsSaveSelected").addEventListener("click", saveSelected);
 $("tsLoadDefault").addEventListener("click", async () => {
@@ -239,6 +262,8 @@ fillForm(BRANDING_DEFAULTS);
 onAuthStateChanged(auth, user => {
   if (!user) { authUser = null; return; }
   ensureAdmin(user).then(async () => {
+    const restoredDraft = restoreLocalDraft();
+    if (restoredDraft) return;
     const lastQuizCode = String(localStorage.getItem("themeStudioLastQuizCode") || "").trim().toUpperCase();
     const code = quizCode() || lastQuizCode;
     if (code) {
