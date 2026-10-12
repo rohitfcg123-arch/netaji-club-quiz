@@ -1,4 +1,5 @@
-import { db } from "./firebase.js";
+import { auth, db } from "./firebase.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { listenForDefaultBranding } from "./branding.js?v=20261013-branding-2";
 import { collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, serverTimestamp, setDoc, Timestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 const $=id=>document.getElementById(id),KEY="netajiQuizLiveState";
@@ -492,3 +493,98 @@ listenForDefaultBranding((branding, error) => {
   if (error) console.warn("Default branding load unavailable; keeping current Quiz Name:", error);
 });
 setInterval(()=>{updateLiveOnly();if(quiz.status==="live"){$("liveStatus").textContent="🟢 QUIZ LIVE — शुरू हो चुका है • प्रश्न "+Math.min(current+1,questions.length)+" / "+questions.length+" • चलने का समय "+formatElapsed(Date.now()-Number(quiz.startAt||Date.now()));}},500);
+
+
+/* Root-admin Google email approvals. Firestore Rules enforce root-only writes. */
+const ROOT_ADMIN_EMAIL = "rohit.fcg123@gmail.com";
+const approvalSection = $("adminApprovalSection");
+const approvalForm = $("adminApprovalForm");
+const approvalEmailInput = $("adminApprovalEmail");
+const approvalStatus = $("adminApprovalStatus");
+const approvalList = $("approvedAdminList");
+const approveButton = $("adminApproveButton");
+
+function approvalMessage(message, isError = false) {
+  if (!approvalStatus) return;
+  approvalStatus.textContent = message;
+  approvalStatus.className = "notice" + (isError ? " error" : " success");
+}
+async function loadApprovedAdmins() {
+  if (!approvalList) return;
+  approvalList.replaceChildren();
+  try {
+    const snapshot = await getDocs(collection(db, "approvedAdminEmails"));
+    const entries = snapshot.docs.map(item => ({ id: item.id, ...item.data() }))
+      .filter(item => item.id.toLowerCase() !== ROOT_ADMIN_EMAIL)
+      .sort((a,b) => a.id.localeCompare(b.id));
+    if (!entries.length) {
+      const li = document.createElement("li");
+      li.textContent = "Abhi koi additional Admin email approved nahi hai.";
+      approvalList.appendChild(li);
+    }
+    for (const entry of entries) {
+      const li = document.createElement("li");
+      li.style.cssText = "display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid #eadbb5";
+      const label = document.createElement("span");
+      label.textContent = entry.id + (entry.active === true ? " — Approved" : " — Disabled");
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = entry.active === true ? "Revoke Access" : "Approve Again";
+      button.addEventListener("click", async () => {
+        button.disabled = true;
+        try {
+          if (entry.active === true) {
+            await setDoc(doc(db, "approvedAdminEmails", entry.id), {
+              email: entry.id, active: false, approvedAt: serverTimestamp(), approvedBy: ROOT_ADMIN_EMAIL
+            }, { merge: true });
+          } else {
+            await setDoc(doc(db, "approvedAdminEmails", entry.id), {
+              email: entry.id, active: true, approvedAt: serverTimestamp(), approvedBy: ROOT_ADMIN_EMAIL
+            }, { merge: true });
+          }
+          approvalMessage("Admin approval list update ho gayi.");
+          await loadApprovedAdmins();
+        } catch (error) {
+          console.error("Admin approval update failed:", error);
+          approvalMessage("Update fail: " + (error?.message || String(error)) + " Firestore Rules publish hui hain?", true);
+        } finally { button.disabled = false; }
+      });
+      li.append(label, button);
+      approvalList.appendChild(li);
+    }
+    approvalMessage("Approved email list Firebase se load ho gayi.");
+  } catch (error) {
+    console.error("Could not load approved admins:", error);
+    approvalMessage("List load nahi hui: " + (error?.message || String(error)) + " Firestore Rules publish karni hongi.", true);
+  }
+}
+approvalForm?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const email = String(approvalEmailInput?.value || "").trim().toLowerCase();
+  if (!email || !email.includes("@")) {
+    approvalMessage("Valid Google email address enter karein.", true);
+    return;
+  }
+  if (email === ROOT_ADMIN_EMAIL) {
+    approvalMessage("Root Admin ko alag se approve karne ki zarurat nahi hai.", true);
+    return;
+  }
+  if (approveButton) approveButton.disabled = true;
+  try {
+    await setDoc(doc(db, "approvedAdminEmails", email), {
+      email, active: true, approvedAt: serverTimestamp(), approvedBy: ROOT_ADMIN_EMAIL
+    }, { merge: true });
+    approvalEmailInput.value = "";
+    approvalMessage(email + " ko Admin access approve ho gaya.");
+    await loadApprovedAdmins();
+  } catch (error) {
+    console.error("Admin email approval failed:", error);
+    approvalMessage("Approval save nahi hua: " + (error?.message || String(error)) + " Firestore Rules publish hui hain?", true);
+  } finally { if (approveButton) approveButton.disabled = false; }
+});
+$("refreshAdminApprovals")?.addEventListener("click", loadApprovedAdmins);
+onAuthStateChanged(auth, user => {
+  const isRoot = String(user?.email || "").trim().toLowerCase() === ROOT_ADMIN_EMAIL;
+  if (approvalSection) approvalSection.hidden = !isRoot;
+  if (isRoot) void loadApprovedAdmins();
+});
