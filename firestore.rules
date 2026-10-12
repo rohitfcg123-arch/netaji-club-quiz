@@ -3,9 +3,15 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Players may use Google or other Firebase providers; admin access remains email/password allowlisted.
+    // Player accounts are Google-only. Admins continue to use the allowlisted password account.
     function signedIn() {
       return request.auth != null;
+    }
+
+    function googlePlayer() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'google.com'
+        && request.auth.token.email is string;
     }
 
     function passwordUser() {
@@ -70,7 +76,8 @@ service cloud.firestore {
       match /questions/{i} {
         allow get: if isAdmin()
           || (
-            signedIn()
+            googlePlayer()
+            && exists(/databases/$(database)/documents/quizzes/$(q)/players/$(request.auth.uid))
             && quizExists(q)
             && quiz(q).status == 'live'
             && request.time >= questionStart(q, int(i))
@@ -86,7 +93,7 @@ service cloud.firestore {
       match /keys/{i} {
         allow get: if isAdmin()
           || (
-            signedIn()
+            googlePlayer()
             && exists(/databases/$(database)/documents/quizzes/$(q)/answers/$(request.auth.uid + '_' + string(int(i))))
           );
         allow list: if isAdmin();
@@ -100,22 +107,28 @@ service cloud.firestore {
       // -------------------------
       match /players/{uid} {
         allow get: if isAdmin()
-          || (signedIn() && request.auth.uid == uid);
+          || (googlePlayer() && request.auth.uid == uid);
 
         allow list: if isAdmin();
 
-        allow create: if signedIn()
+        allow create: if googlePlayer()
           && request.auth.uid == uid
-          && request.resource.data.keys().hasOnly(['name', 'joinedAt'])
+          && request.resource.data.keys().hasOnly(['name', 'email', 'photoURL', 'joinedAt'])
           && request.resource.data.name is string
           && request.resource.data.name.size() > 0
           && request.resource.data.name.size() <= 40
+          && request.resource.data.email == request.auth.token.email
           && request.resource.data.joinedAt == request.time
           && quizExists(q)
           && quiz(q).status in ['waiting', 'starting', 'live'];
 
         // Players cannot change scores, names, or answer history from client.
-        allow update, delete: if isAdmin();
+        allow update: if isAdmin()
+          || (googlePlayer()
+            && request.auth.uid == uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['email', 'photoURL'])
+            && request.resource.data.email == request.auth.token.email);
+        allow delete: if isAdmin();
       }
 
       // -------------------------
@@ -129,7 +142,7 @@ service cloud.firestore {
         // Allow one answer per authenticated player for the currently live question.
         // Do not depend on timestamp arithmetic here: it can cause valid answers
         // to be rejected when the client/server clocks or question timer differ.
-        allow create: if signedIn()
+        allow create: if googlePlayer()
           && request.resource.data.keys().hasOnly(['uid', 'q', 'sel', 'at', 'elapsedMs'])
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.q is int
@@ -155,7 +168,7 @@ service cloud.firestore {
       // Each player can read only their own result; admins can read all.
       match /results/{uid} {
         allow get: if isAdmin()
-          || (signedIn() && request.auth.uid == uid);
+          || (googlePlayer() && request.auth.uid == uid);
 
         allow list: if isAdmin();
         allow create, update, delete: if isAdmin();
