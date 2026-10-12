@@ -24,7 +24,7 @@ async function syncQuestionBank(){
   const batch=writeBatch(db);
   for(let i=0;i<questions.length;i++){
     const q=questions[i];
-    batch.set(doc(db,"quizzes",code,"questions",String(i)),{question:q.question,options:q.options,category:q.category||"Uncategorized"});
+    batch.set(doc(db,"quizzes",code,"questions",String(i)),{question:q.translations?.hi?.question||q.question,options:q.translations?.hi?.options||q.options,translations:q.translations||null,category:q.category||"Uncategorized"});
     batch.set(doc(db,"quizzes",code,"keys",String(i)),{correctIndex:Number(q.correctIndex)||0});
   }
   // Preserve question-bank documents outside the selected run limit.
@@ -44,7 +44,7 @@ async function restoreRemoteQuestionBank(){
     const keyMap=new Map(keySnap.docs.map(d=>[d.id,d.data()]));
     const remote=questionSnap.docs
       .sort((a,b)=>(Number(a.id)-Number(b.id)))
-      .map(d=>{const x=d.data();const k=keyMap.get(d.id)||{};return {question:String(x.question||""),options:Array.isArray(x.options)?x.options.map(String):[],correctIndex:Number(k.correctIndex)||0,category:String(x.category||"Uncategorized")}})
+      .map(d=>{const x=d.data();const k=keyMap.get(d.id)||{};return {question:String(x.question||""),options:Array.isArray(x.options)?x.options.map(String):[],translations:x.translations&&typeof x.translations==="object"?x.translations:null,correctIndex:Number(k.correctIndex)||0,category:String(x.category||"Uncategorized")}})
       .filter(q=>q.question&&q.options.length===4);
     if(remote.length>bankQuestions.length){
       bankQuestions=remote;
@@ -86,7 +86,45 @@ function render(){
 }
 function updateSelectionButton(){const boxes=[...$("questions").querySelectorAll(".question-checkbox")];const all=boxes.length>0&&boxes.every(b=>b.checked);$("selectAllQuestions").textContent=all?"Unselect all":"Select all visible"}
 function publish(){persist();render()}
-function parseQuestions(data){const list=Array.isArray(data)?data:(data&&Array.isArray(data.questions)?data.questions:null);if(!list)throw new Error('JSON में questions नाम की array नहीं मिली।');const fallback=currentCategory();return list.map((item,i)=>{const question=String(item.q??item.question??item.text??'').trim();let opts=item.options??item.choices;if(!Array.isArray(opts)&&item.options&&typeof item.options==='object')opts=Object.values(item.options);if(!Array.isArray(opts)&&['A','B','C','D'].every(k=>item[k]!==undefined))opts=[item.A,item.B,item.C,item.D];if(!question)throw new Error('Question '+(i+1)+': q/question खाली है।');if(!Array.isArray(opts)||opts.length!==4||opts.some(x=>String(x).trim()===''))throw new Error('Question '+(i+1)+': चार options जरूरी हैं।');const raw=item.correctIndex??item.answerIndex??item.correctOptionIndex??item.correctAnswer??item.answer??item.correct;let idx=-1;if(Number.isInteger(raw))idx=raw;else if(typeof raw==='string'){const x=raw.trim();if(/^[0-3]$/.test(x))idx=Number(x);else if(/^[A-D]$/i.test(x))idx=x.toUpperCase().charCodeAt(0)-65;else if(/^option\s*[A-D]$/i.test(x))idx=x.slice(-1).toUpperCase().charCodeAt(0)-65;else if(/^option\s*[1-4]$/i.test(x))idx=Number(x.slice(-1))-1;else{const found=opts.findIndex(o=>String(o).trim()===x);if(found>=0)idx=found}}if(idx<0||idx>3)throw new Error('Question '+(i+1)+': answer A/B/C/D या 0/1/2/3 होना चाहिए।');const category=String(item.category??item.categoryName??item.batch??item.tag??fallback).trim()||fallback;return{question,options:opts.map(x=>String(x).trim()),correctIndex:idx,category}})}
+function parseQuestions(data){
+ const list=Array.isArray(data)?data:(data&&Array.isArray(data.questions)?data.questions:null);
+ if(!list)throw new Error('JSON में questions नाम की array नहीं मिली।');
+ const fallback=currentCategory();
+ return list.map((item,i)=>{
+  let translations=null,question="",opts=[];
+  if(item.translations&&typeof item.translations==="object"){
+   translations={};
+   for(const lang of ["hi","en","bn"]){
+    const t=item.translations[lang];
+    if(!t||typeof t.question!=="string"||!Array.isArray(t.options)||t.options.length!==4||t.options.some(x=>String(x).trim()===""))
+     throw new Error("Question "+(i+1)+": हिंदी, English और বাংলা में question तथा चारों options जरूरी हैं।");
+    translations[lang]={question:t.question.trim(),options:t.options.map(x=>String(x).trim())};
+   }
+   question=translations.hi.question;opts=translations.hi.options;
+  }else{
+   question=String(item.q??item.question??item.text??"").trim();
+   opts=item.options??item.choices;
+   if(!Array.isArray(opts)&&item.options&&typeof item.options==="object")opts=Object.values(item.options);
+   if(!Array.isArray(opts)&&["A","B","C","D"].every(k=>item[k]!==undefined))opts=[item.A,item.B,item.C,item.D];
+  }
+  if(!question)throw new Error("Question "+(i+1)+": q/question खाली है।");
+  if(!Array.isArray(opts)||opts.length!==4||opts.some(x=>String(x).trim()===""))throw new Error("Question "+(i+1)+": चार options जरूरी हैं।");
+  const raw=item.correctIndex??item.answerIndex??item.correctOptionIndex??item.correctAnswer??item.answer??item.correct;
+  let idx=-1;
+  if(Number.isInteger(raw))idx=raw;
+  else if(typeof raw==="string"){
+   const x=raw.trim();
+   if(/^[0-3]$/.test(x))idx=Number(x);
+   else if(/^[A-D]$/i.test(x))idx=x.toUpperCase().charCodeAt(0)-65;
+   else if(/^option\s*[A-D]$/i.test(x))idx=x.slice(-1).toUpperCase().charCodeAt(0)-65;
+   else if(/^option\s*[1-4]$/i.test(x))idx=Number(x.slice(-1))-1;
+   else{const found=opts.findIndex(o=>String(o).trim()===x);if(found>=0)idx=found}
+  }
+  if(idx<0||idx>3)throw new Error("Question "+(i+1)+": answer A/B/C/D या 0/1/2/3 होना चाहिए।");
+  const category=String(item.category??item.categoryName??item.batch??item.tag??fallback).trim()||fallback;
+  return{question,options:opts.map(x=>String(x).trim()),translations,correctIndex:idx,category};
+ });
+}
 async function importJson(){const status=$("importStatus"),button=$("importJson");try{status.textContent="JSON पढ़ा जा रहा है…";button.disabled=true;let raw=$("jsonText").value.trim();const input=$("jsonFile"),file=input.files&&input.files[0];if(file)raw=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||""));reader.onerror=()=>reject(new Error("फ़ाइल पढ़ी नहीं जा सकी।"));reader.readAsText(file)});if(!raw)throw new Error("पहले JSON file चुनें या JSON text paste करें।");let data;try{data=JSON.parse(raw)}catch(e){throw new Error("JSON format गलत है: "+e.message)}const parsed=parseQuestions(data);if(!parsed.length)throw new Error("फ़ाइल में कोई question नहीं मिला।");bankQuestions.push(...parsed);questions=bankQuestions;save();status.textContent="✅ "+parsed.length+" प्रश्न import हुए। कुल प्रश्न: "+bankQuestions.length+"।";$("jsonText").value="";input.value=""}catch(e){console.error(e);status.textContent="❌ Import नहीं हुआ: "+(e.message||String(e))}finally{button.disabled=false}}
 $("categoryFilter").addEventListener("change",()=>{$("deleteStatus").textContent="Category: "+$("categoryFilter").selectedOptions[0].textContent;render()});
 $("selectAllQuestions").onclick=()=>{const boxes=[...$("questions").querySelectorAll(".question-checkbox")];const all=boxes.length>0&&boxes.every(b=>b.checked);boxes.forEach(b=>b.checked=!all);$("deleteStatus").textContent=all?"चयन हटाया गया।":boxes.length+" visible प्रश्न चुने गए।";updateSelectionButton()};
