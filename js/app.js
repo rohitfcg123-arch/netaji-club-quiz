@@ -206,7 +206,7 @@ function startListening(code) {
       currentIndex = idx;
       answered = false;
       if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
-      unsubQuestion = onSnapshot(doc(db, "quizzes", activeCode, "questions", String(idx)), qSnap => {
+      unsubQuestion = onSnapshot(doc(db, "quizzes", activeCode, "questions", String(idx)), async qSnap => {
         if (!qSnap.exists()) { waiting("प्रश्न लोड हो रहा है…"); return; }
         activeQuestionData = qSnap.data();
         const q = localizedQuestion(activeQuestionData);
