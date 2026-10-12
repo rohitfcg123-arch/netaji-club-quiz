@@ -20,43 +20,29 @@ let currentBranding = normalizeBranding(BRANDING_DEFAULTS);
 let defaultBranding = normalizeBranding(BRANDING_DEFAULTS);
 let authUser = null;
 let busy = false;
-let loadedCurrentQuizCode = "";
 let formDirty = false;
 
 const DRAFT_KEY = "themeStudioUnsavedDraft";
-const TARGET_KEY = "themeStudioLastTarget";
 function saveLocalDraft() {
-  try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ code: quizCode(), target: selectedTarget(), branding: collectForm(), savedAt: Date.now() })); } catch {}
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ branding: collectForm(), savedAt: Date.now() })); } catch {}
 }
 function clearLocalDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch {} }
 function restoreLocalDraft() {
   try {
     const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
     if (!draft || !draft.branding || Date.now() - Number(draft.savedAt || 0) > 604800000) return false;
-    // Restore the user's work, but start in global/default mode. This lets
-    // admins update public portal branding without needing a quiz code.
-    $("tsQuizCode").value = "";
-    loadedCurrentQuizCode = "";
     fillForm(draft.branding);
-    const target = document.querySelector('input[name="tsTarget"][value="default"]');
-    if (target) target.checked = true;
     formDirty = true;
     updateSaveLabel();
-    setStatus("⚠️ पिछला draft वापस लाया गया है। Default branding चुनी गई है—Quiz Code के बिना public portal update करने के लिए Save करें। Specific quiz के लिए code डालकर “Current quiz only” चुनें।");
+    setStatus("⚠️ पिछला unsaved draft वापस लाया गया है। बदलाव सुरक्षित रखने के लिए Save Theme दबाएँ।");
     return true;
   } catch { return false; }
 }
-
 
 function setStatus(message, type = "") {
   const el = $("tsStatus");
   el.textContent = message;
   el.className = "notice ts-status" + (type ? " " + type : "");
-}
-function quizCode() { return String($("tsQuizCode").value || "").trim().toUpperCase(); }
-$("tsQuizCode").addEventListener("input", () => { if (quizCode() !== loadedCurrentQuizCode) loadedCurrentQuizCode = ""; });
-function selectedTarget() {
-  return document.querySelector('input[name="tsTarget"]:checked')?.value || "default";
 }
 function setBusy(value) {
   busy = value;
@@ -132,66 +118,8 @@ async function loadDefault() {
   const snap = await getDoc(doc(db, "siteSettings", "branding"));
   defaultBranding = snap.exists() ? normalizeBranding(snap.data()) : normalizeBranding(BRANDING_DEFAULTS);
   fillForm(defaultBranding);
-  document.querySelector('input[name="tsTarget"][value="default"]').checked = true;
   updateSaveLabel();
   setStatus(snap.exists() ? "Saved default branding loaded from Firebase." : "No saved default yet; built-in Saraswati Puja theme loaded.", "success");
-}
-async function findSavedQuizzes() {
-  if (busy) return;
-  setBusy(true);
-  try {
-    const select = $("tsQuizList");
-    select.innerHTML = '<option value="">Choose a saved quiz…</option>';
-    const snap = await getDocs(collection(db, "quizzes"));
-    const quizzes = snap.docs.map(item => ({
-      code: item.id,
-      name: item.data()?.name || item.id
-    })).sort((a,b) => a.name.localeCompare(b.name));
-    for (const quiz of quizzes) {
-      const option = document.createElement("option");
-      option.value = quiz.code;
-      option.textContent = quiz.name + " — " + quiz.code;
-      select.appendChild(option);
-    }
-    if (!quizzes.length) throw new Error("Firebase में कोई saved quiz नहीं मिला। पहले Admin Dashboard में quiz Save करें।");
-    setStatus(quizzes.length + " saved quiz मिले। Dropdown से सही quiz चुनें।", "success");
-  } catch (error) {
-    console.error("Find quizzes failed:", error);
-    setStatus("Quiz list नहीं खुली: " + (error?.message || String(error)), "error");
-  } finally { setBusy(false); }
-}
-$("tsFindQuizzes").addEventListener("click", findSavedQuizzes);
-$("tsQuizList").addEventListener("change", () => {
-  if ($("tsQuizList").value) {
-    $("tsQuizCode").value = $("tsQuizList").value;
-    loadedCurrentQuizCode = "";
-  }
-});
-
-async function loadCurrentQuiz() {
-  if (formDirty) {
-    const discard = window.confirm("इस form में कुछ unsaved बदलाव हैं। Current Quiz की saved settings लोड करने पर ये बदलाव हट जाएंगे। क्या आप आगे बढ़ना चाहते हैं?");
-    if (!discard) return;
-    clearLocalDraft();
-  }
-  const code = quizCode();
-  if (!code) throw new Error("Current Quiz Code भरें। Admin Dashboard में Save Quiz करने के बाद यहाँ code डालें।");
-  const snap = await getDoc(doc(db, "quizzes", code));
-  if (!snap.exists()) throw new Error("Firebase में Quiz Code " + code + " नहीं मिला।");
-  const quiz = snap.data();
-  loadedCurrentQuizCode = code;
-  localStorage.setItem("themeStudioLastQuizCode", code);
-  const config = quiz.settings?.branding?.useDefaultTheme
-    ? defaultBranding
-    : quiz.settings?.branding || defaultBranding;
-  const formConfig = normalizeBranding({
-    ...config,
-    text: { ...(config.text || {}), defaultQuizName: quiz.name || config.text?.defaultQuizName || "" }
-  });
-  fillForm(formConfig);
-  document.querySelector('input[name="tsTarget"][value="current"]').checked = true;
-  updateSaveLabel();
-  setStatus('Quiz "' + (quiz.name || code) + '" loaded from Firebase. Edits will apply only to this quiz.', "success");
 }
 async function saveDefault(config) {
   await setDoc(doc(db, "siteSettings", "branding"), {
@@ -200,7 +128,6 @@ async function saveDefault(config) {
   }, { merge: true });
   defaultBranding = normalizeBranding({ ...config, updatedAt: new Date() });
   currentBranding = defaultBranding;
-  localStorage.setItem(TARGET_KEY, "default");
   clearLocalDraft();
   setStatus("✅ Default branding saved to Firebase. Connected screens will receive the theme in real time.", "success");
 }
@@ -216,30 +143,6 @@ async function saveSelected() {
     setStatus("❌ Save नहीं हुआ: " + (error?.message || String(error)), "error");
   } finally { setBusy(false); }
 }
-async function useDefaultForCurrent() {
-  if (busy) return;
-  const code = quizCode();
-  if (!code) { setStatus("Current Quiz Code भरें।", "error"); return; }
-  setBusy(true);
-  try {
-    const ref = doc(db, "quizzes", code);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) throw new Error("Quiz " + code + " Firebase में नहीं मिला।");
-    const old = snap.data();
-    await setDoc(ref, {
-      settings: { ...(old.settings || {}), branding: { useDefaultTheme: true } },
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-    localStorage.setItem(TARGET_KEY, "current");
-    localStorage.setItem("themeStudioLastQuizCode", code);
-    clearLocalDraft();
-    setStatus("✅ This quiz will now follow the saved default branding in real time.", "success");
-  } catch (error) {
-    console.error(error);
-    setStatus("❌ Default theme apply नहीं हुआ: " + (error?.message || String(error)), "error");
-  } finally { setBusy(false); }
-}
-
 let warnedAboutFestivalEdit = false;
 function applyPresetToForm(presetKey) {
   const preset = BRANDING_PRESETS[presetKey];
@@ -262,12 +165,6 @@ function applyPresetToForm(presetKey) {
 document.querySelectorAll("[data-preset]").forEach(button => button.addEventListener("click", () => {
   const presetKey = button.dataset.preset;
   if (formDirty && !window.confirm("Theme बदलने से form के unsaved changes replace हो सकते हैं। क्या आगे बढ़ना है?")) return;
-  // Festival presets and Custom are usable without a quiz code: if no code is
-  // entered, automatically select global/default branding as the save target.
-  if (!quizCode()) {
-    const defaultTarget = document.querySelector('input[name="tsTarget"][value="default"]');
-    if (defaultTarget) defaultTarget.checked = true;
-  }
   applyPresetToForm(presetKey);
 }));
 function allowFestivalEdit() {
@@ -288,10 +185,8 @@ $("tsLoadDefault").addEventListener("click", async () => {
   catch (e) { console.error(e); setStatus("Default load नहीं हुआ: " + (e?.message || String(e)) + " Firestore rules publish करना न भूलें।", "error"); }
   finally { setBusy(false); }
 });
-$("tsUseDefault").addEventListener("click", useDefaultForCurrent);
 $("tsReset").addEventListener("click", () => {
   fillForm(defaultBranding);
-  document.querySelector('input[name="tsTarget"][value="default"]').checked = true;
   updateSaveLabel();
 });
 
