@@ -262,6 +262,9 @@ document.querySelectorAll("[data-preset]").forEach(button => button.addEventList
     colors: { ...preset.colors },
     effects: { ...preset.effects }
   });
+  // fillForm resets formDirty for normal loads; selecting a preset is an edit.
+  formDirty = true;
+  updateSaveLabel();
   saveLocalDraft();
   setStatus(preset.label + " preset selected. Preview देखो और फिर save/apply करो.");
 }));
