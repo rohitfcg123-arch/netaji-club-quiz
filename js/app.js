@@ -1,7 +1,7 @@
 import { auth, db } from "./firebase.js";
 import {
-  onAuthStateChanged, signOut, setPersistence, browserLocalPersistence,
-  GoogleAuthProvider, signInWithRedirect, getRedirectResult, getIdTokenResult
+  onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup,
+  getIdTokenResult
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {
   doc, getDoc, onSnapshot, setDoc, serverTimestamp
@@ -59,60 +59,69 @@ if (hostMode) {
   if (requestedCode) startListening(requestedCode);
   else waiting("Quiz Code नहीं मिला।");
 } else {
-  // Players must authenticate with Google only. Password-based sessions from an
-  // older version are signed out and cannot enter the player portal.
-  async function isGoogleUser(user) {
-    try {
-      const token = await getIdTokenResult(user);
-      return token.claims.firebase?.sign_in_provider === "google.com";
-    } catch (error) {
-      console.error("Could not verify Google sign-in provider:", error);
-      return false;
-    }
-  }
+  // This site is hosted on GitHub Pages, so use popup OAuth instead of a full
+  // redirect through firebaseapp.com. Modern browsers can block the cross-site
+  // storage used by redirect sign-in on non-Firebase hosting.
+  let navigatingToJoin = false;
 
   async function routeAuthenticatedUser(user) {
-    if (!user) return;
-    if (!(await isGoogleUser(user))) {
-      try { await signOut(auth); } catch (error) { console.error("Sign out non-Google player:", error); }
-      authNotice("Player Portal में केवल Continue with Google से Login कर सकते हैं।");
-      return;
+    if (!user || navigatingToJoin) return;
+    try {
+      const token = await getIdTokenResult(user);
+      const provider = token.claims.firebase?.sign_in_provider;
+      if (provider !== "google.com") {
+        await signOut(auth);
+        authNotice("इस Player Portal में केवल Google Account से Login कर सकते हैं।");
+        $("googleLoginBtn").disabled = false;
+        return;
+      }
+      navigatingToJoin = true;
+      $("googleLoginBtn").disabled = true;
+      authNotice("✅ Google Login सफल हुआ! Quiz join पेज खोला जा रहा है…");
+      // Give the success message a moment to be visible before navigation.
+      setTimeout(() => location.replace(new URL("join.html", location.href).href), 450);
+    } catch (error) {
+      console.error("Google provider verification failed:", error);
+      authNotice("Login verify नहीं हो पाया। Internet connection जाँचें और फिर कोशिश करें।");
+      $("googleLoginBtn").disabled = false;
     }
-    if (redirectCheckFinished) location.replace("join.html");
   }
 
   $("googleLoginBtn").addEventListener("click", async () => {
-    $("googleLoginBtn").disabled = true;
-    authNotice("Google Login खोला जा रहा है…");
+    const button = $("googleLoginBtn");
+    button.disabled = true;
+    authNotice("Google Account चुनने के लिए सुरक्षित Login window खुल रही है…");
     try {
-      await setPersistence(auth, browserLocalPersistence);
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
-      await signInWithRedirect(auth, provider);
-    } catch (err) {
-      console.error("Google Login:", err);
-      authNotice(authError(err));
-      $("googleLoginBtn").disabled = false;
+      // Do not await any other operation before this call; the browser needs
+      // the user's direct click to allow the OAuth popup.
+      const credential = await signInWithPopup(auth, provider);
+      authNotice("✅ Google ने पहचान की पुष्टि कर दी। आगे बढ़ रहे हैं…");
+      await routeAuthenticatedUser(credential.user);
+    } catch (error) {
+      console.error("Google popup login failed:", error);
+      const messages = {
+        "auth/popup-blocked": "Browser ने Login window रोक दी। Chrome में Pop-ups की अनुमति देकर फिर कोशिश करें।",
+        "auth/popup-closed-by-user": "Login window बंद हो गई। Continue with Google दबाकर फिर कोशिश करें।",
+        "auth/cancelled-popup-request": "Login request रद्द हो गई। एक बार फिर Continue with Google दबाएँ।",
+        "auth/unauthorized-domain": "Firebase Console के Authorized domains में rohitfcg123-arch.github.io जोड़ें।",
+        "auth/operation-not-allowed": "Firebase Console → Authentication → Sign-in method में Google provider Enable करें।",
+        "auth/network-request-failed": "Internet connection जाँचें और फिर प्रयास करें।"
+      };
+      authNotice("❌ " + (messages[error.code] || error.message || "Google Login नहीं हो पाया। दोबारा कोशिश करें।"));
+      button.disabled = false;
     }
   });
 
-  let redirectCheckFinished = false;
-  getRedirectResult(auth).then(result => {
-    if (result?.user) authNotice("Google Login सफल हुआ। आगे बढ़ रहे हैं…");
-  }).catch(err => {
-    console.error("Google redirect result:", err);
-    authNotice(authError(err));
-  }).finally(() => {
-    redirectCheckFinished = true;
-    if (auth.currentUser) void routeAuthenticatedUser(auth.currentUser);
-  });
-
   onAuthStateChanged(auth, user => {
-    if (!user) return;
-    const typedName = localStorage.getItem("ncQuizPendingName");
-    if (typedName && !user.displayName) localStorage.setItem("ncQuizPendingName", typedName);
-    void routeAuthenticatedUser(user);
+    if (user) void routeAuthenticatedUser(user);
+    else {
+      navigatingToJoin = false;
+      if ($("googleLoginBtn")) $("googleLoginBtn").disabled = false;
+    }
   });
+}
 }
 function startListening(code) {
   activeCode = String(code).toUpperCase();
