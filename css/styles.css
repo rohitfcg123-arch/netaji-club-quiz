@@ -22,3 +22,7 @@ body.host-mode .hero{display:none!important}body.host-mode #game{display:block}b
 .join-form input:focus{outline:2px solid #4285f4;outline-offset:1px}
 .start-quiz-button{width:100%;margin-top:20px}
 .top .header-button{margin-left:auto;white-space:nowrap}
+
+/* Google-only player login */
+#authPanel .google-login{display:block;max-width:480px;margin:22px auto 10px}
+#authPanel .notice:empty{display:none}
