@@ -5,6 +5,7 @@ let questions=[],bankQuestions=[],current=0,quiz={id:"",name:"Saraswati Puja Qui
 const languageNames={hi:"हिंदी",en:"English",bn:"বাংলা"};
 const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"{}")}catch{return {}}};
 let syncChain=Promise.resolve();
+let advancingQuestion=false;
 let unsubPlayers=null, watchedPlayerCode="";
 function persist(){
   const s=read();s.quiz={...quiz,questions,currentIndex:current};s.questions=bankQuestions;s.questionBank=bankQuestions;s.players=players;
@@ -12,9 +13,11 @@ function persist(){
   if(!quiz.id)return Promise.resolve();
   const code=String(quiz.id).trim().toUpperCase();
   const quizDoc={id:code,name:quiz.name||"Quiz",status:quiz.status||"waiting",settings:quiz.settings||{questionSeconds:10,questionLimit:100,startDelay:0},currentIndex:current,runId:quiz.runId||"",startAt:Number(quiz.startAt||0),questionStartedAt:Number(quiz.questionStartedAt||0),endAt:Number(quiz.endAt||0),startedAt:quiz.startedAt instanceof Timestamp?quiz.startedAt:(quiz.startAt?Timestamp.fromMillis(Number(quiz.startAt)):null),lead:Number(quiz.settings?.startDelay||0),sec:Number(quiz.settings?.questionSeconds||10),count:questions.length,updatedAt:serverTimestamp()};
-  syncChain=syncChain.then(()=>setDoc(doc(db,"quizzes",code),quizDoc,{merge:true}));
-  syncChain.catch(e=>{console.error("Firestore quiz sync failed",e);const el=$("quizStatus");if(el)el.textContent="Firebase sync error: "+(e.message||"Rules/connection जाँचें")});
-  return syncChain;
+  // Recover a failed write queue before scheduling the next update.
+  const queuedWrite=syncChain.catch(()=>undefined).then(()=>setDoc(doc(db,"quizzes",code),quizDoc,{merge:true}));
+  syncChain=queuedWrite;
+  queuedWrite.catch(e=>{console.error("Firestore quiz sync failed",e);const el=$("quizStatus");if(el)el.textContent="Firebase sync error: "+(e.message||"Rules/connection जाँचें")});
+  return queuedWrite;
 }
 async function syncQuestionBank(){
   if(!quiz.id) throw new Error("Quiz Code save नहीं है।");
@@ -32,6 +35,28 @@ async function syncQuestionBank(){
   // Preserve question-bank documents outside the selected run limit.
   $("liveStatus").textContent="⏳ "+questions.length+" questions Firebase पर एक साथ sync हो रहे हैं…";
   await batch.commit();
+}
+async function clearRunCollection(name){
+  const code=String(quiz.id||"").trim().toUpperCase();
+  const snap=await getDocs(collection(db,"quizzes",code,name));
+  for(let offset=0;offset<snap.docs.length;offset+=400){
+    const batch=writeBatch(db);
+    snap.docs.slice(offset,offset+400).forEach(d=>batch.delete(d.ref));
+    await batch.commit();
+  }
+}
+async function clearRunRecords(){
+  // Reusing a Quiz Code must not carry answers, timings, or results from an older round.
+  for(const name of ["answers","results","questionTiming"]) await clearRunCollection(name);
+}
+async function markQuestionStarted(index){
+  const code=String(quiz.id||"").trim().toUpperCase();
+  // Firestore assigns the timestamp; player-device clocks are not used in rankings.
+  await setDoc(doc(db,"quizzes",code,"questionTiming",String(index)),{
+    questionIndex:index,
+    runId:quiz.runId||"",
+    startedAt:serverTimestamp()
+  });
 }
 // Recover questions already saved in Firestore for this quiz code. Older runs may have
 // uploaded a larger bank; do not let a short local cache permanently cap the quiz.
@@ -179,6 +204,7 @@ async function beginLive(){
   $("adminTimer").textContent="Preparing…";
   render();
   try {
+    await clearRunRecords();
     await syncQuestionBank();
     const plannedStart=Date.now()+delay*1000;
     quiz.status=delay>0?"starting":"live";
@@ -188,7 +214,8 @@ async function beginLive(){
     quiz.sec=seconds;
     quiz.count=questions.length;
     quiz.currentIndex=0;
-    quiz.questionStartedAt=plannedStart;
+    quiz.questionStartedAt=delay>0?plannedStart:Date.now();
+    if(delay===0) await markQuestionStarted(0);
     await persist();
     render();
 
@@ -204,7 +231,8 @@ async function beginLive(){
           clearInterval(countdownTimer);countdownTimer=null;
           quiz.status="live";
           quiz.startedAt=Timestamp.fromMillis(Number(quiz.startAt));
-          quiz.questionStartedAt=Number(quiz.startAt);
+          await markQuestionStarted(0);
+          quiz.questionStartedAt=Date.now();
           await persist();
           render();
           $("liveStatus").textContent="🟢 QUIZ LIVE — प्रश्न 1 / "+questions.length;
@@ -233,15 +261,13 @@ function showStartError(e){
 }
 function runQuestionTimer(){
   if(autoTimer)clearInterval(autoTimer);
-  autoTimer=setInterval(()=>{
+  autoTimer=setInterval(async()=>{
     if(quiz.status!=="live"){clearInterval(autoTimer);autoTimer=null;return}
+    if(advancingQuestion)return;
     const duration=Number(quiz.settings?.questionSeconds||10)*1000;
     if(Date.now()-Number(quiz.questionStartedAt||0)>=duration){
       if(current<questions.length-1){
-        current++;
-        quiz.currentIndex=current;
-        quiz.questionStartedAt=Date.now();
-        persist().then(render).catch(showStartError);
+        await advanceQuestion(current+1);
       }else{
         clearInterval(autoTimer);autoTimer=null;
         $("end").click();
@@ -249,10 +275,35 @@ function runQuestionTimer(){
     }else render();
   },250);
 }
+async function advanceQuestion(nextIndex){
+  if(advancingQuestion||quiz.status!=="live"||nextIndex<=current||nextIndex>=questions.length)return false;
+  advancingQuestion=true;
+  const previous={current,questionStartedAt:quiz.questionStartedAt};
+  try{
+    // Write the server-side timing marker before publishing the new question index.
+    await markQuestionStarted(nextIndex);
+    current=nextIndex;
+    quiz.currentIndex=nextIndex;
+    quiz.questionStartedAt=Date.now();
+    await persist();
+    render();
+    return true;
+  }catch(error){
+    current=previous.current;
+    quiz.currentIndex=previous.current;
+    quiz.questionStartedAt=previous.questionStartedAt;
+    console.error("Question advance failed; timer will retry:",error);
+    const status=$("liveStatus");
+    if(status)status.textContent="⚠️ अगला प्रश्न sync हो रहा है; कृपया कुछ क्षण रुकें…";
+    return false;
+  }finally{
+    advancingQuestion=false;
+  }
+}
 function openLiveScreen(){if(!quiz.id){alert("पहले Quiz Code generate करके Save Quiz करें।");return null}const tab=window.open("index.html?host=1&code="+encodeURIComponent(quiz.id),"_blank");if(!tab){$("liveStatus").textContent="Live screen popup block हो गया। Open Live Screen बटन दबाएँ या browser में popups allow करें।"}return tab}
 $("openLiveScreen").onclick=()=>openLiveScreen();
 $("start").onclick=async()=>{const sec=Number($("questionSeconds").value),limit=Number($("questionLimit").value),delay=Number($("startDelay").value);if(!quiz.id){alert("पहले Quiz Code generate करके Save Quiz करें।");return}if(!Number.isFinite(sec)||sec<5||sec>600){alert("हर प्रश्न का समय 5 से 600 सेकंड के बीच रखें।");return}if(!Number.isInteger(limit)||limit<1){alert("Question limit कम से कम 1 होना चाहिए।");return}await restoreRemoteQuestionBank();watchPlayers();if(!bankQuestions.length){alert("Question Bank खाली है। JSON से प्रश्न import करें या प्रश्न जोड़ें।");return}stopTimers();quiz.status="waiting";quiz.endAt=0;quiz.settings={...(quiz.settings||{}),questionSeconds:sec,questionLimit:limit,startDelay:delay};const questionBank=[...bankQuestions];const selectedQuestions=shuffle(questionBank).slice(0,Math.min(limit,questionBank.length));if(selectedQuestions.length<limit){alert("ध्यान दें: आपने "+limit+" प्रश्न चुने हैं, लेकिन अभी उपलब्ध Question Bank में केवल "+selectedQuestions.length+" प्रश्न मिले। प्रश्न सूची के ऊपर कुल संख्या जाँचें और जरूरत हो तो पूरा JSON फिर से Import करें।");}questions=selectedQuestions;current=0;players=read().players||[];$("liveStatus").textContent="Question Bank: "+bankQuestions.length+" • इस Quiz में चुने गए: "+questions.length;render();beginLive();alert(delay>0?"Questions sync होने के बाद "+delay+" सेकंड का countdown Admin और Player दोनों पर चलेगा।":"Questions sync होने के बाद Quiz शुरू होगा।")};
-$("next").onclick=()=>{if(quiz.status!=="live")return;if(current<questions.length-1){current++;quiz.questionStartedAt=Date.now();publish()}else $("end").click()};
+$("next").onclick=async()=>{if(quiz.status!=="live")return;if(current<questions.length-1){await advanceQuestion(current+1)}else $("end").click()};
 $("end").onclick=async()=>{stopTimers();quiz.status="completed";quiz.endAt=Date.now();await persist();render();$("liveStatus").textContent="Quiz समाप्त हो गया है। Results तैयार हो रहे हैं…";await loadResults()};
 async function loadResults(){
   const code=String(quiz.id||"").trim().toUpperCase();
@@ -262,24 +313,38 @@ async function loadResults(){
   if(board)board.innerHTML="";
   if(detail)detail.innerHTML="";
   try{
-    const [playerSnap,answerSnap,keySnap,questionSnap]=await Promise.all([
+    const [playerSnap,answerSnap,keySnap,questionSnap,timingSnap]=await Promise.all([
       getDocs(collection(db,"quizzes",code,"players")),
       getDocs(collection(db,"quizzes",code,"answers")),
       getDocs(collection(db,"quizzes",code,"keys")),
-      getDocs(collection(db,"quizzes",code,"questions"))
+      getDocs(collection(db,"quizzes",code,"questions")),
+      getDocs(collection(db,"quizzes",code,"questionTiming"))
     ]);
     const playerRows=playerSnap.docs.map(d=>({uid:d.id,...d.data()}));
-    const answers=answerSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const timingStarts=new Map(timingSnap.docs.map(d=>{
+      const data=d.data();
+      const stamp=data.startedAt&&typeof data.startedAt.toMillis==="function"?data.startedAt.toMillis():0;
+      return [d.id,data.runId===quiz.runId?stamp:0];
+    }));
+    // Both are server-generated timestamps. Quantize to centiseconds (1/100 sec = 10 ms).
+    const answers=answerSnap.docs.map(d=>{
+      const data=d.data();
+      const start=timingStarts.get(String(data.q))||0;
+      const received=data.at&&typeof data.at.toMillis==="function"?data.at.toMillis():0;
+      const measured=start>0&&received>0
+        ?Math.floor(Math.max(0,received-start)/10)*10
+        :Math.floor(Math.max(0,Number(data.elapsedMs||0))/10)*10;
+      return {id:d.id,...data,serverElapsedMs:measured};
+    });
     const keys=new Map(keySnap.docs.map(d=>[d.id,Number(d.data().correctIndex)]));
     const qs=new Map(questionSnap.docs.map(d=>[d.id,d.data()]));
     const total=Number(quiz.count||questions.length||questionSnap.size);
     const rows=playerRows.map(p=>{
       const mine=answers.filter(a=>a.uid===p.uid);
       const correct=mine.filter(a=>keys.get(String(a.q))===Number(a.sel)).length;
-      const elapsed=mine.reduce((sum,a)=>sum+Math.max(0,Number(a.elapsedMs||0)),0);
-      const times=mine.map(a=>a.at&&typeof a.at.toMillis==="function"?a.at.toMillis():0).filter(Boolean);
+      const elapsed=mine.reduce((sum,a)=>sum+Math.max(0,Number(a.serverElapsedMs||0)),0);
       const completed=mine.length>=total;
-      const totalSolveMs=completed&&times.length?Math.max(0,Math.max(...times)-Number(quiz.startAt||0)):elapsed;
+      const totalSolveMs=elapsed;
       return {...p,mine,correct,answered:mine.length,elapsed,totalSolveMs,completed};
     }).sort((a,b)=>b.correct-a.correct||(a.completed!==b.completed?(a.completed?-1:1):a.totalSolveMs-b.totalSolveMs)||String(a.name||"").localeCompare(String(b.name||"")));
     if(quiz.status==="completed"){
@@ -289,7 +354,7 @@ async function loadResults(){
         rows.slice(offset,offset+400).forEach(p=>batch.set(doc(db,"quizzes",code,"results",p.uid),{
           uid:p.uid,name:p.name||"",email:p.email||"",photoURL:p.photoURL||"",
           score:p.correct*points,correct:p.correct,answered:p.answered,totalQuestions:total,
-          totalSolveMs:p.totalSolveMs,completed:p.completed,quizCode:code,updatedAt:serverTimestamp()
+          totalSolveMs:p.totalSolveMs,totalSolveCentiseconds:Math.floor(p.totalSolveMs/10),completed:p.completed,quizCode:code,updatedAt:serverTimestamp()
         },{merge:true}));
         await batch.commit();
       }
@@ -303,7 +368,7 @@ async function loadResults(){
         const a=p.mine.find(x=>Number(x.q)===i),q=qs.get(String(i)),correct=keys.get(String(i));
         const selected=a?Number(a.sel):-1;
         const at=a&&a.at&&typeof a.at.toDate==="function"?a.at.toDate().toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"medium"}):"जवाब नहीं दिया";
-        const spent=a?formatPrecise(Number(a.elapsedMs||0)):"—";
+        const spent=a?formatPrecise(Number(a.serverElapsedMs||0)):"—";
         const chosen=a?(q?.options?.[selected]??("Option "+String.fromCharCode(65+selected))):"उत्तर नहीं दिया";
         const right=q?.options?.[correct]??(correct===undefined?"—":"Option "+String.fromCharCode(65+correct));
         return '<li><b>Q'+(i+1)+':</b> '+escapeHtml(q?.question||"प्रश्न उपलब्ध नहीं")+'<br>चुना गया: '+escapeHtml(chosen)+'<br>सही उत्तर: '+escapeHtml(right)+'<br>परिणाम: '+(a?(selected===correct?'✅ सही':'❌ गलत'):'—')+'<br>जवाब जमा समय: '+escapeHtml(at)+'<br>इस प्रश्न पर समय: '+escapeHtml(spent)+'</li>';
