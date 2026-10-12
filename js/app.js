@@ -60,6 +60,14 @@ if (hostMode) {
     back.href = "admin.html";
     back.textContent = "← Admin Home";
     back.style.cssText = "display:inline-block;background:#fff8e8;border:1px solid #d9cba8;border-radius:10px;padding:9px 12px;text-decoration:none;white-space:nowrap";
+    // Review Quiz is opened with window.open() from the authenticated Admin tab.
+    // Return to that existing tab instead of loading admin.html in a fresh document.
+    back.addEventListener("click", event => {
+      if (window.opener && !window.opener.closed) {
+        event.preventDefault();
+        try { window.opener.focus(); window.close(); } catch (error) { console.warn("Could not return to opener tab", error); }
+      }
+    });
     hostHeader.appendChild(back);
   }
   document.body.classList.add("host-mode");
