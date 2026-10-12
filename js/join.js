@@ -299,6 +299,7 @@ function startListening(code) {
 
 async function displayAnswerFeedback(selected, q, fromPrevious = false, questionIndex = currentIndex) {
   const keySnap = await getDoc(doc(db, "quizzes", activeCode, "keys", String(questionIndex)));
+  if (questionIndex !== currentIndex) return;
   if (!keySnap.exists()) throw new Error("Correct answer key is not available.");
   const correctIndex = Number(keySnap.data().correctIndex);
   if (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex > 3) throw new Error("Correct answer key is invalid.");
@@ -324,6 +325,8 @@ async function displayAnswerFeedback(selected, q, fromPrevious = false, question
 
 async function submitAnswer(selected, questionIndex = currentIndex) {
   if (answered || questionIndex !== currentIndex || !currentUser || !activeCode || !quizState || quizState.status !== "live") return;
+  const answerQuestion = activeQuestionData;
+  const answerText = localizedQuestion(answerQuestion || {});
   answered = true;
   [...$("options").children].forEach(button => { button.disabled = true; });
   try {
@@ -345,8 +348,9 @@ async function submitAnswer(selected, questionIndex = currentIndex) {
     }
     return;
   }
+  if (questionIndex !== currentIndex) return;
   try {
-    await displayAnswerFeedback(selected, localizedQuestion(activeQuestionData || {}), false, questionIndex);
+    await displayAnswerFeedback(selected, answerText, false, questionIndex);
   } catch (error) {
     console.error("Answer feedback:", error);
     $("feedback").textContent = "✅ आपका जवाब लॉक हो गया है। सही उत्तर दिखाने में समस्या हुई; जवाब बदला नहीं जा सकता।";
