@@ -18,6 +18,7 @@ const languageNames = { hi: "हिंदी", en: "English", bn: "বাংল�
 
 let hostAdminVerified = false;
 let hostDataCode = "";
+let hostCurrentRunId = "";
 let hostDataUnsubs = [];
 let hostPlayers = [];
 let hostAnswers = [];
@@ -43,9 +44,9 @@ function renderHostShell() {
     '  <section class="host-question-panel">',
     '   <div class="host-question-top"><span class="host-question-number">QUESTION <b id="hostQuestionNo">—</b></span><span class="host-points">LIVE QUESTION</span></div>',
     '   <div class="host-translations">',
-    '    <article class="host-lang host-lang-en"><span class="host-lang-tag">ENGLISH</span><h2 id="hostQuestionEn">Waiting for the quiz to start…</h2></article>',
-    '    <article class="host-lang host-lang-hi"><span class="host-lang-tag">हिंदी</span><h2 id="hostQuestionHi">क्विज़ शुरू होने का इंतज़ार है…</h2></article>',
-    '    <article class="host-lang host-lang-bn"><span class="host-lang-tag">বাংলা</span><h2 id="hostQuestionBn">কুইজ শুরু হওয়ার অপেক্ষায়…</h2></article>',
+    '    <article class="host-lang host-lang-en"><span class="host-lang-tag">ENGLISH</span><small id="hostFallbackEn" class="host-translation-warning"></small><h2 id="hostQuestionEn">Waiting for the quiz to start…</h2></article>',
+    '    <article class="host-lang host-lang-hi"><span class="host-lang-tag">हिंदी</span><small id="hostFallbackHi" class="host-translation-warning"></small><h2 id="hostQuestionHi">क्विज़ शुरू होने का इंतज़ार है…</h2></article>',
+    '    <article class="host-lang host-lang-bn"><span class="host-lang-tag">বাংলা</span><small id="hostFallbackBn" class="host-translation-warning"></small><h2 id="hostQuestionBn">কুইজ শুরু হওয়ার অপেক্ষায়…</h2></article>',
     '   </div>',
     '  </section>',
     '  <section id="options" class="host-options" aria-label="Answer options"></section>',
@@ -81,10 +82,10 @@ function hostSafeImage(value) {
 }
 function hostTranslation(q, lang) {
   const tr = q && q.translations && q.translations[lang];
-  if (tr && typeof tr.question === "string" && Array.isArray(tr.options) && tr.options.length === 4) return tr;
-  if (lang === "hi") return { question: q && q.question || "", options: q && q.options || [], fallback: true };
-  const missing = lang === "en" ? "English translation unavailable" : "এই প্রশ্নটির বাংলা অনুবাদ নেই";
-  return { question: missing, options: [], fallback: true };
+  if (tr && typeof tr.question === "string" && Array.isArray(tr.options) && tr.options.length === 4) return { question: tr.question, options: tr.options, fallback: false };
+  // The player screen shows the source question when a chosen language translation is missing.
+  // Mirror that behavior here, and visibly label the absent translation.
+  return { question: q && q.question || "", options: q && q.options || [], fallback: true };
 }
 function renderHostQuestion(q) {
   const en = hostTranslation(q, "en");
@@ -92,7 +93,10 @@ function renderHostQuestion(q) {
   const bn = hostTranslation(q, "bn");
   $("hostQuestionEn").textContent = en.question || "English translation unavailable";
   $("hostQuestionHi").textContent = hi.question || "हिंदी में प्रश्न उपलब्ध नहीं";
-  $("hostQuestionBn").textContent = bn.question || "এই প্রশ্নটির বাংলা অনুবাদ নেই";
+  $("hostQuestionBn").textContent = bn.question || "";
+  $("hostFallbackEn").textContent = en.fallback ? "Source text shown — translation missing" : "";
+  $("hostFallbackHi").textContent = hi.fallback ? "अनुवाद उपलब्ध नहीं — source text" : "";
+  $("hostFallbackBn").textContent = bn.fallback ? "অনুবাদ নেই — source text" : "";
   $("question").textContent = hi.question || "";
   const optHost = $("options");
   optHost.innerHTML = "";
@@ -100,9 +104,9 @@ function renderHostQuestion(q) {
     const letter = String.fromCharCode(65 + i);
     const option = document.createElement("article");
     option.className = "host-option host-option-" + letter.toLowerCase();
-    const enText = en.options && en.options[i] ? en.options[i] : "—";
+    const enText = en.options && en.options[i] ? en.options[i] : (q?.options?.[i] || "—");
     const hiText = hi.options && hi.options[i] ? hi.options[i] : (i < (q?.options || []).length ? q.options[i] : "—");
-    const bnText = bn.options && bn.options[i] ? bn.options[i] : "—";
+    const bnText = bn.options && bn.options[i] ? bn.options[i] : (q?.options?.[i] || "—");
     option.innerHTML = '<span class="host-option-letter">' + letter + '</span><div class="host-option-copy"><strong class="host-option-en"></strong><span class="host-option-hi"></span><span class="host-option-bn"></span></div>';
     option.querySelector(".host-option-en").textContent = String(enText);
     option.querySelector(".host-option-hi").textContent = String(hiText);
@@ -417,7 +421,16 @@ function startListening(code) {
   unsubQuiz = onSnapshot(doc(db, "quizzes", activeCode), snap => {
     if (!snap.exists()) { waiting("इस Quiz Code का Quiz नहीं मिला।"); return; }
     quizState = snap.data();
-    if (hostMode) updateHostMeta();
+    if (hostMode) {
+      const newRunId = String(quizState.runId || "");
+      if (hostCurrentRunId && newRunId && hostCurrentRunId !== newRunId) {
+        hostCurrentRankByUid = new Map(); hostBaseRanks = new Map(); hostHasRankBaseline = false;
+        hostLastBaselineQuestion = -1; hostAnswers = []; hostKeys = new Map(); hostQuestionStarts = new Map();
+        activeQuestionData = null;
+      }
+      if (newRunId) hostCurrentRunId = newRunId;
+      updateHostMeta();
+    }
     if (quizState.status === "completed") {
       $("status").textContent = "Completed";
       $("question").textContent = "Quiz समाप्त हो गया।";
