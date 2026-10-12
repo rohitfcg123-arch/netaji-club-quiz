@@ -313,7 +313,7 @@ document.querySelectorAll('input[name="tsTarget"]').forEach(el => el.addEventLis
 // We never auto-load that quiz, so it cannot overwrite default branding edits.
 try {
   const live = JSON.parse(localStorage.getItem("netajiQuizLiveState") || "{}");
-  const savedCode = String(live.quiz?.id || localStorage.getItem("themeStudioLastQuizCode") || "").trim().toUpperCase();
+  const savedCode = String(localStorage.getItem("themeStudioLastQuizCode") || live.quiz?.id || "").trim().toUpperCase();
   if (savedCode) $("tsQuizCode").value = savedCode;
 } catch {}
 fillForm(BRANDING_DEFAULTS);
