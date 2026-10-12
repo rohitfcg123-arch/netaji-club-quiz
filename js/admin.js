@@ -1,4 +1,5 @@
 import { db } from "./firebase.js";
+import { listenForDefaultBranding } from "./branding.js";
 import { collection, deleteDoc, doc, getDocs, onSnapshot, serverTimestamp, setDoc, Timestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 const $=id=>document.getElementById(id),KEY="netajiQuizLiveState";
 let questions=[],bankQuestions=[],current=0,quiz={id:"",name:"Saraswati Puja Quiz",status:"waiting",settings:{pointsPerCorrect:10,questionSeconds:10,questionLimit:100,startDelay:0},questions:[]},players=[],autoTimer=null,countdownTimer=null;
@@ -456,4 +457,14 @@ const s=read();if(s.quiz){quiz={...quiz,...s.quiz,settings:{questionSeconds:10,q
 render();
 restoreRemoteQuestionBank().catch(e=>console.warn("Startup question-bank recovery failed",e));
 function updateLiveOnly(){const s=read();if(s.quiz?.id===quiz.id){players=s.players||[];if(s.quiz.status==="live"&&s.quiz.runId!==quiz.runId){const incoming=Array.isArray(s.quiz.questions)?s.quiz.questions:[];if(incoming.length>=questions.length||!questions.length){quiz={...quiz,...s.quiz};questions=incoming;current=s.quiz.currentIndex||0}else{console.warn("Ignored stale/short live snapshot",incoming.length,"vs current",questions.length)}} $("liveStatus").textContent=quiz.status==="live"?"🟢 QUIZ LIVE — शुरू हो चुका है • प्रश्न "+Math.min(current+1,questions.length)+" / "+questions.length+" • चलने का समय "+formatElapsed(Date.now()-Number(quiz.startAt||Date.now())):quiz.status==="starting"?"⏳ Quiz "+Math.max(0,Math.ceil((Number(quiz.startAt||0)-Date.now())/1000))+" सेकंड में शुरू होगा…":quiz.status==="completed"?"Quiz समाप्त हो गया है।":"Quiz अभी शुरू नहीं हुआ है।";const secs=Number(quiz.settings?.questionSeconds||10),started=Number(quiz.questionStartedAt||0);$("adminTimer").textContent=quiz.status==="live"?Math.max(0,secs-Math.floor((Date.now()-started)/1000))+" sec":"—";$("participants").textContent=players.length;$("players").innerHTML=players.map(p=>"<li>"+escapeHtml(p.name)+" — "+(p.score||0)+" points</li>").join("")}}
+let defaultBrandingForAdmin = null;
+let quizNameTouched = false;
+$("quizName")?.addEventListener("input", () => { quizNameTouched = true; });
+listenForDefaultBranding((branding, error) => {
+  defaultBrandingForAdmin = branding;
+  if (!quiz.id && !quizNameTouched && $("quizName") && branding?.text?.defaultQuizName) {
+    $("quizName").value = branding.text.defaultQuizName;
+  }
+  if (error) console.warn("Default branding load unavailable; keeping current Quiz Name:", error);
+});
 setInterval(()=>{updateLiveOnly();if(quiz.status==="live"){$("liveStatus").textContent="🟢 QUIZ LIVE — शुरू हो चुका है • प्रश्न "+Math.min(current+1,questions.length)+" / "+questions.length+" • चलने का समय "+formatElapsed(Date.now()-Number(quiz.startAt||Date.now()));}},500);
