@@ -1,5 +1,5 @@
 import { auth, db } from "./firebase.js";
-import { BRANDING_DEFAULTS, normalizeBranding, resolveBranding, applyBranding, listenForDefaultBranding } from "./branding.js";
+import { BRANDING_DEFAULTS, normalizeBranding, resolveBranding, applyBranding, listenForDefaultBranding } from "./branding.js?v=20261013-branding-2";
 import { onAuthStateChanged, signOut, getIdTokenResult } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { doc, getDoc, onSnapshot, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
