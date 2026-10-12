@@ -1,6 +1,6 @@
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged, getIdTokenResult } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import { doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { collection, doc, getDoc, getDocs, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import { BRANDING_DEFAULTS, BRANDING_PRESETS, normalizeBranding, applyBranding } from "./branding.js?v=20261013-branding-2";
 
 const $ = id => document.getElementById(id);
@@ -130,6 +130,38 @@ async function loadDefault() {
   updateSaveLabel();
   setStatus(snap.exists() ? "Saved default branding loaded from Firebase." : "No saved default yet; built-in Saraswati Puja theme loaded.", "success");
 }
+async function findSavedQuizzes() {
+  if (busy) return;
+  setBusy(true);
+  try {
+    const select = $("tsQuizList");
+    select.innerHTML = '<option value="">Choose a saved quiz…</option>';
+    const snap = await getDocs(collection(db, "quizzes"));
+    const quizzes = snap.docs.map(item => ({
+      code: item.id,
+      name: item.data()?.name || item.id
+    })).sort((a,b) => a.name.localeCompare(b.name));
+    for (const quiz of quizzes) {
+      const option = document.createElement("option");
+      option.value = quiz.code;
+      option.textContent = quiz.name + " — " + quiz.code;
+      select.appendChild(option);
+    }
+    if (!quizzes.length) throw new Error("Firebase में कोई saved quiz नहीं मिला। पहले Admin Dashboard में quiz Save करें।");
+    setStatus(quizzes.length + " saved quiz मिले। Dropdown से सही quiz चुनें।", "success");
+  } catch (error) {
+    console.error("Find quizzes failed:", error);
+    setStatus("Quiz list नहीं खुली: " + (error?.message || String(error)), "error");
+  } finally { setBusy(false); }
+}
+$("tsFindQuizzes").addEventListener("click", findSavedQuizzes);
+$("tsQuizList").addEventListener("change", () => {
+  if ($("tsQuizList").value) {
+    $("tsQuizCode").value = $("tsQuizList").value;
+    loadedCurrentQuizCode = "";
+  }
+});
+
 async function loadCurrentQuiz() {
   if (formDirty) {
     const discard = window.confirm("इस form में कुछ unsaved बदलाव हैं। Current Quiz की saved settings लोड करने पर ये बदलाव हट जाएंगे। क्या आप आगे बढ़ना चाहते हैं?");
