@@ -11,3 +11,14 @@ body.host-mode .hero{display:none!important}body.host-mode #game{display:block}b
 .google-login{width:100%;margin:8px 0 14px;background:linear-gradient(135deg,#4285f4,#2265c9);box-shadow:0 4px #174ea6}
 .options button.answer-correct{background:#d7f5de!important;border:2px solid #16823b!important;color:#155b2c!important;opacity:1!important}
 .options button.answer-wrong{background:#ffe0df!important;border:2px solid #b4232b!important;color:#8c2026!important;opacity:1!important}
+
+
+/* Dedicated player setup page after authentication */
+.join-card{max-width:680px;margin:28px auto;text-align:center}
+.join-card h2{color:#862127;font-size:clamp(28px,5vw,40px);margin:10px 0}
+.join-form{text-align:left;max-width:520px;margin:22px auto}
+.join-form label{display:block;font-weight:750;margin:14px 0 6px}
+.join-form input{width:100%;padding:15px 16px;border:1px solid #d9cba8;border-radius:12px;background:#edf2ff;font:inherit;color:#292929}
+.join-form input:focus{outline:2px solid #4285f4;outline-offset:1px}
+.start-quiz-button{width:100%;margin-top:20px}
+.top .header-button{margin-left:auto;white-space:nowrap}
