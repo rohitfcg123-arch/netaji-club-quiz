@@ -31,6 +31,32 @@ async function syncQuestionBank(){
   $("liveStatus").textContent="⏳ "+questions.length+" questions Firebase पर एक साथ sync हो रहे हैं…";
   await batch.commit();
 }
+// Recover questions already saved in Firestore for this quiz code. Older runs may have
+// uploaded a larger bank; do not let a short local cache permanently cap the quiz.
+async function restoreRemoteQuestionBank(){
+  if(!quiz.id)return 0;
+  try{
+    const code=String(quiz.id).trim().toUpperCase();
+    const [questionSnap,keySnap]=await Promise.all([
+      getDocs(collection(db,"quizzes",code,"questions")),
+      getDocs(collection(db,"quizzes",code,"keys"))
+    ]);
+    const keyMap=new Map(keySnap.docs.map(d=>[d.id,d.data()]));
+    const remote=questionSnap.docs
+      .sort((a,b)=>(Number(a.id)-Number(b.id)))
+      .map(d=>{const x=d.data();const k=keyMap.get(d.id)||{};return {question:String(x.question||""),options:Array.isArray(x.options)?x.options.map(String):[],correctIndex:Number(k.correctIndex)||0,category:String(x.category||"Uncategorized")}})
+      .filter(q=>q.question&&q.options.length===4);
+    if(remote.length>bankQuestions.length){
+      bankQuestions=remote;
+      if(!["live","starting"].includes(quiz.status))questions=bankQuestions;
+      const state=read();state.questions=bankQuestions;state.questionBank=bankQuestions;
+      try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){console.warn("Could not cache recovered bank",e)}
+      render();
+      const status=$("liveStatus");if(status)status.textContent="✅ Firestore से "+remote.length+" saved questions restore हुए। अब quiz start करें।";
+    }
+    return remote.length;
+  }catch(e){console.warn("Remote question-bank recovery unavailable",e);return 0}
+}
 function save(){persist();render()}
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function escapeHtml(v){return String(v).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;")}
@@ -160,7 +186,7 @@ function runQuestionTimer(){
 }
 function openLiveScreen(){if(!quiz.id){alert("पहले Quiz Code generate करके Save Quiz करें।");return null}const tab=window.open("index.html?host=1&code="+encodeURIComponent(quiz.id),"_blank");if(!tab){$("liveStatus").textContent="Live screen popup block हो गया। Open Live Screen बटन दबाएँ या browser में popups allow करें।"}return tab}
 $("openLiveScreen").onclick=()=>openLiveScreen();
-$("start").onclick=()=>{const sec=Number($("questionSeconds").value),limit=Number($("questionLimit").value),delay=Number($("startDelay").value);if(!quiz.id){alert("पहले Quiz Code generate करके Save Quiz करें।");return}if(!questions.length){alert("पहले JSON से प्रश्न import करें या प्रश्न जोड़ें।");return}if(!Number.isFinite(sec)||sec<5||sec>600){alert("हर प्रश्न का समय 5 से 600 सेकंड के बीच रखें।");return}if(!Number.isInteger(limit)||limit<1){alert("Question limit कम से कम 1 होना चाहिए।");return}stopTimers();quiz.status="waiting";quiz.endAt=0;quiz.settings={...(quiz.settings||{}),questionSeconds:sec,questionLimit:limit,startDelay:delay};const questionBank=[...bankQuestions];const selectedQuestions=shuffle(questionBank).slice(0,Math.min(limit,questionBank.length));if(selectedQuestions.length<limit){alert("ध्यान दें: आपने "+limit+" प्रश्न चुने हैं, लेकिन Question Bank में केवल "+selectedQuestions.length+" प्रश्न उपलब्ध हैं। पहले और प्रश्न जोड़ें।");}questions=selectedQuestions;current=0;players=read().players||[];beginLive();alert(delay>0?"Questions sync होने के बाद "+delay+" सेकंड का countdown Admin और Player दोनों पर चलेगा।":"Questions sync होने के बाद Quiz शुरू होगा।")};
+$("start").onclick=async()=>{const sec=Number($("questionSeconds").value),limit=Number($("questionLimit").value),delay=Number($("startDelay").value);if(!quiz.id){alert("पहले Quiz Code generate करके Save Quiz करें।");return}if(!Number.isFinite(sec)||sec<5||sec>600){alert("हर प्रश्न का समय 5 से 600 सेकंड के बीच रखें।");return}if(!Number.isInteger(limit)||limit<1){alert("Question limit कम से कम 1 होना चाहिए।");return}await restoreRemoteQuestionBank();if(!bankQuestions.length){alert("Question Bank खाली है। JSON से प्रश्न import करें या प्रश्न जोड़ें।");return}stopTimers();quiz.status="waiting";quiz.endAt=0;quiz.settings={...(quiz.settings||{}),questionSeconds:sec,questionLimit:limit,startDelay:delay};const questionBank=[...bankQuestions];const selectedQuestions=shuffle(questionBank).slice(0,Math.min(limit,questionBank.length));if(selectedQuestions.length<limit){alert("ध्यान दें: आपने "+limit+" प्रश्न चुने हैं, लेकिन अभी उपलब्ध Question Bank में केवल "+selectedQuestions.length+" प्रश्न मिले। प्रश्न सूची के ऊपर कुल संख्या जाँचें और जरूरत हो तो पूरा JSON फिर से Import करें।");}questions=selectedQuestions;current=0;players=read().players||[];$("liveStatus").textContent="Question Bank: "+bankQuestions.length+" • इस Quiz में चुने गए: "+questions.length;render();beginLive();alert(delay>0?"Questions sync होने के बाद "+delay+" सेकंड का countdown Admin और Player दोनों पर चलेगा।":"Questions sync होने के बाद Quiz शुरू होगा।")};
 $("next").onclick=()=>{if(quiz.status!=="live")return;if(current<questions.length-1){current++;quiz.questionStartedAt=Date.now();publish()}else $("end").click()};
 $("end").onclick=async()=>{stopTimers();quiz.status="completed";quiz.endAt=Date.now();await persist();render();$("liveStatus").textContent="Quiz समाप्त हो गया है। Results तैयार हो रहे हैं…";await loadResults()};
 async function loadResults(){
@@ -217,5 +243,6 @@ if($("refreshResults"))$("refreshResults").onclick=loadResults;
 
 const s=read();if(s.quiz){quiz={...quiz,...s.quiz,settings:{questionSeconds:10,questionLimit:100,startDelay:0,...(s.quiz.settings||{})}};const savedBanks=[s.questionBank,s.questions,s.quiz.questions].filter(Array.isArray);bankQuestions=savedBanks.sort((a,b)=>b.length-a.length)[0]||[];questions=bankQuestions;players=s.players||[];$("quizCode").value=quiz.id||"";$("quizName").value=quiz.name||"";current=s.quiz.currentIndex||0;$("questionSeconds").value=quiz.settings.questionSeconds;$("questionLimit").value=quiz.settings.questionLimit;$("startDelay").value=String(quiz.settings.startDelay||0)}
 render();
-function updateLiveOnly(){const s=read();if(s.quiz?.id===quiz.id){players=s.players||[];if(s.quiz.status==="live"&&s.quiz.runId!==quiz.runId){quiz={...quiz,...s.quiz};questions=s.quiz.questions||[];current=s.quiz.currentIndex||0} $("liveStatus").textContent=quiz.status==="live"?"🟢 QUIZ LIVE — शुरू हो चुका है • प्रश्न "+Math.min(current+1,questions.length)+" / "+questions.length+" • चलने का समय "+formatElapsed(Date.now()-Number(quiz.startAt||Date.now())):quiz.status==="starting"?"⏳ Quiz "+Math.max(0,Math.ceil((Number(quiz.startAt||0)-Date.now())/1000))+" सेकंड में शुरू होगा…":quiz.status==="completed"?"Quiz समाप्त हो गया है।":"Quiz अभी शुरू नहीं हुआ है।";const secs=Number(quiz.settings?.questionSeconds||10),started=Number(quiz.questionStartedAt||0);$("adminTimer").textContent=quiz.status==="live"?Math.max(0,secs-Math.floor((Date.now()-started)/1000))+" sec":"—";$("participants").textContent=players.length;$("players").innerHTML=players.map(p=>"<li>"+escapeHtml(p.name)+" — "+(p.score||0)+" points</li>").join("")}}
+restoreRemoteQuestionBank().catch(e=>console.warn("Startup question-bank recovery failed",e));
+function updateLiveOnly(){const s=read();if(s.quiz?.id===quiz.id){players=s.players||[];if(s.quiz.status==="live"&&s.quiz.runId!==quiz.runId){const incoming=Array.isArray(s.quiz.questions)?s.quiz.questions:[];if(incoming.length>=questions.length||!questions.length){quiz={...quiz,...s.quiz};questions=incoming;current=s.quiz.currentIndex||0}else{console.warn("Ignored stale/short live snapshot",incoming.length,"vs current",questions.length)}} $("liveStatus").textContent=quiz.status==="live"?"🟢 QUIZ LIVE — शुरू हो चुका है • प्रश्न "+Math.min(current+1,questions.length)+" / "+questions.length+" • चलने का समय "+formatElapsed(Date.now()-Number(quiz.startAt||Date.now())):quiz.status==="starting"?"⏳ Quiz "+Math.max(0,Math.ceil((Number(quiz.startAt||0)-Date.now())/1000))+" सेकंड में शुरू होगा…":quiz.status==="completed"?"Quiz समाप्त हो गया है।":"Quiz अभी शुरू नहीं हुआ है।";const secs=Number(quiz.settings?.questionSeconds||10),started=Number(quiz.questionStartedAt||0);$("adminTimer").textContent=quiz.status==="live"?Math.max(0,secs-Math.floor((Date.now()-started)/1000))+" sec":"—";$("participants").textContent=players.length;$("players").innerHTML=players.map(p=>"<li>"+escapeHtml(p.name)+" — "+(p.score||0)+" points</li>").join("")}}
 setInterval(()=>{updateLiveOnly();if(quiz.status==="live"){$("liveStatus").textContent="🟢 QUIZ LIVE — शुरू हो चुका है • प्रश्न "+Math.min(current+1,questions.length)+" / "+questions.length+" • चलने का समय "+formatElapsed(Date.now()-Number(quiz.startAt||Date.now()));}},500);
