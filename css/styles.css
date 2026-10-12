@@ -186,3 +186,97 @@ body.host-mode {
 
 .host-translation-warning{min-height:0;font-size:clamp(8px,.6vw,11px);font-weight:750;line-height:1.1;color:#967b54;margin:-3px 0 5px;text-align:center}
 .host-lang-hi .host-translation-warning{color:#946a40}.host-lang-bn .host-translation-warning{color:#5c826d}
+
+
+/* UPDATE: Review screen adaptive fit for portrait/landscape + readable error states */
+.host-option-error{grid-column:1/-1;width:100%;min-height:64px;padding:16px;border:1px dashed #f87171;border-radius:14px;color:#ffd4d4;background:#421923;text-align:center;font-size:clamp(13px,1.3vw,20px);font-weight:850}
+.host-mode #hostBoard{height:100dvh;min-height:0;grid-template-rows:auto minmax(0,1fr) auto auto}
+.host-mode .host-main{min-height:0;grid-template-rows:minmax(0,1fr) auto minmax(0,.78fr)}
+.host-question-panel{min-height:0}
+.host-mode #options.host-options{grid-template-columns:repeat(4,minmax(0,1fr))}
+.host-rank-grid{grid-template-columns:repeat(auto-fit,minmax(min(110px,100%),1fr));overflow:auto}
+@media (orientation:portrait) and (min-width:651px){
+ .host-mode #hostBoard{height:100dvh;padding:12px;gap:10px}
+ .host-mode .host-main{grid-template-rows:minmax(0,1fr) auto minmax(0,.7fr)}
+ .host-translations{grid-template-columns:1fr}
+ .host-lang{padding:8px 12px}
+ .host-lang+.host-lang{border-left:0;border-top:1px solid #bfcedf}
+ .host-lang h2{font-size:clamp(18px,2.2vh,29px)}
+ .host-mode #options.host-options{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .host-option{min-height:0;padding:8px 12px}
+ .host-rank-grid{grid-template-columns:repeat(3,minmax(0,1fr));overflow:auto}
+}
+@media (orientation:landscape) and (max-height:600px){
+ .host-mode #hostBoard{height:100dvh;min-height:0;padding:6px 12px;gap:6px;grid-template-rows:auto minmax(0,1fr) auto}
+ .host-mode .host-header{grid-template-columns:minmax(0,1fr) minmax(170px,.8fr) auto;gap:12px;padding:0 5px}
+ .host-logo{width:48px;height:48px;flex-basis:48px;font-size:19px}
+ .host-brand-hi{font-size:clamp(18px,3.4vh,27px)}
+ .host-brand-en{font-size:clamp(9px,1.7vh,13px)}
+ .host-motto{font-size:clamp(8px,1.5vh,11px)}
+ .host-round{display:flex!important;padding:7px 12px}
+ .host-round-label{font-size:clamp(10px,1.7vh,14px)}
+ .host-round strong{font-size:clamp(12px,2vh,17px)}
+ .host-round>span:last-child{font-size:clamp(10px,1.5vh,13px)}
+ .host-clock-ring{width:clamp(52px,11vh,70px);height:clamp(52px,11vh,70px);padding:4px}
+ .host-clock-inner strong{font-size:clamp(23px,5vh,32px)}
+ .host-clock-inner small{font-size:8px;margin-top:2px}
+ .host-clock-caption{font-size:9px}
+ .host-mode .host-main{grid-template-rows:minmax(0,1fr) auto minmax(90px,.45fr);gap:6px}
+ .host-question-panel{padding:7px 12px;border-radius:15px}
+ .host-question-number,.host-points{padding:4px 10px;font-size:clamp(10px,1.7vh,14px)}
+ .host-translations{grid-template-columns:repeat(3,minmax(0,1fr));margin-top:3px}
+ .host-lang{padding:2px 10px}
+ .host-lang+.host-lang{border-left:1px solid #bfcedf;border-top:0}
+ .host-lang-tag{padding:3px 10px;min-width:90px;margin-bottom:3px;font-size:clamp(9px,1.5vh,12px)}
+ .host-lang h2{font-size:clamp(13px,2.4vh,21px);line-height:1.08}
+ .host-translation-warning{font-size:8px;margin:0 0 2px}
+ .host-mode #options.host-options{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+ .host-option{min-height:0;padding:5px 8px;gap:6px;border-radius:10px}
+ .host-option-letter{width:clamp(24px,5vh,36px);height:clamp(24px,5vh,36px);font-size:clamp(14px,2.6vh,20px)}
+ .host-option-en{font-size:clamp(10px,1.8vh,15px)}
+ .host-option-hi,.host-option-bn{font-size:clamp(8px,1.35vh,11px)}
+ .host-ranking-heading{min-height:18px;gap:5px}
+ .host-ranking-heading h2{font-size:clamp(12px,2vh,17px)}
+ .host-trophy{font-size:16px}
+ .host-ranking-note{font-size:9px;display:block}
+ .host-rank-grid{grid-template-columns:repeat(10,minmax(0,1fr));gap:5px;overflow:auto}
+ .host-rank-card{padding:3px;gap:1px;border-radius:8px}
+ .host-rank-card-top{height:14px}
+ .host-rank-number,.host-medal{font-size:10px}
+ .host-avatar{width:22px;height:22px;font-size:8px}
+ .host-player-name{font-size:9px}
+ .host-player-score{font-size:12px}
+ .host-player-detail,.host-movement{font-size:8px}
+ .host-mode .host-footer{min-height:32px;padding:3px 10px;border-radius:9px;gap:8px}
+ .host-foot-icon{font-size:14px}
+ .host-foot-stat strong{font-size:13px}
+ .host-foot-stat small{font-size:9px}
+ .host-foot-divider{height:18px;display:block}
+}
+@media (max-width:650px) and (orientation:landscape){
+ body.host-mode{height:100dvh;min-height:0;overflow:hidden}
+ .host-mode #hostBoard{height:100dvh;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto;overflow:hidden;padding:5px;gap:5px}
+ .host-mode .host-header{grid-template-columns:minmax(0,1fr) auto;gap:6px;padding:0}
+ .host-logo{width:38px;height:38px;flex-basis:38px;font-size:15px}
+ .host-brand-hi{font-size:18px}.host-brand-en{font-size:8px}.host-motto{font-size:8px}
+ .host-clock-ring{width:48px;height:48px}.host-clock-inner strong{font-size:20px}
+ .host-clock-inner small{font-size:7px}.host-clock-caption{font-size:7px}
+ .host-mode .host-main{display:grid;grid-template-rows:minmax(0,1fr) auto minmax(75px,.45fr);gap:5px}
+ .host-question-panel{min-height:0;padding:5px;border-radius:10px}
+ .host-translations{grid-template-columns:repeat(3,minmax(0,1fr));gap:0}
+ .host-lang{padding:2px 5px}.host-lang+.host-lang{border-left:1px solid #bfcedf;border-top:0}
+ .host-lang-tag{min-width:0;padding:2px 6px;font-size:8px;margin-bottom:2px}
+ .host-lang h2{font-size:clamp(10px,2.6vh,15px);line-height:1.05}
+ .host-mode #options.host-options{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+ .host-option{min-height:0;padding:4px;gap:4px;border-radius:8px}
+ .host-option-letter{width:22px;height:22px;font-size:12px}
+ .host-option-en{font-size:10px}.host-option-hi,.host-option-bn{font-size:7px}
+ .host-ranking-heading{min-height:15px}.host-ranking-heading h2{font-size:12px}
+ .host-rank-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:3px}
+ .host-rank-card{padding:2px;gap:1px}.host-avatar{width:18px;height:18px}
+ .host-player-name,.host-player-detail,.host-movement{font-size:7px}
+ .host-player-score{font-size:10px}
+ .host-mode .host-footer{min-height:25px;padding:2px 5px;gap:4px}
+ .host-foot-icon{font-size:11px}.host-foot-stat strong{font-size:10px}.host-foot-stat small{font-size:7px}
+ .host-foot-divider{display:none}
+}
