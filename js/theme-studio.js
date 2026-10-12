@@ -1,7 +1,7 @@
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged, getIdTokenResult } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import { BRANDING_DEFAULTS, BRANDING_PRESETS, normalizeBranding, applyBranding } from "./branding.js";
+import { BRANDING_DEFAULTS, BRANDING_PRESETS, normalizeBranding, applyBranding } from "./branding.js?v=20261013-branding-2";
 
 const $ = id => document.getElementById(id);
 const TEXT_FIELDS = {
