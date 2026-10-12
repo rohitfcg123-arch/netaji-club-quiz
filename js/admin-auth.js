@@ -119,15 +119,17 @@ onAuthStateChanged(auth, async (user) => {
     setMessage("Admin session verified.");
   } catch (error) {
     console.error("Admin authorization check failed:", error);
-    authorizedUid = null;
-    showGate(true);
-
     if (error?.code === "admin/not-authorized") {
+      authorizedUid = null;
+      showGate(true);
       try { await signOut(auth); } catch (signOutError) { console.error(signOutError); }
       setMessage(error.message, true);
     } else {
-      // Do not erase a valid session just because Firestore/network was temporarily unavailable.
-      setMessage("Login session सेव है, लेकिन Admin permission verify नहीं हो पाई। Internet/Firestore Rules जाँचें और पेज refresh करें। विवरण: " + (error?.message || "Unknown error"), true);
+      // Keep the signed-in admin on the dashboard during temporary Firestore/network errors.
+      // Only an explicit Logout or a confirmed inactive/missing admin record should gate access.
+      authorizedUid = user.uid;
+      showGate(false);
+      setMessage("आप Login हैं। Admin permission की जाँच अभी अस्थायी रूप से नहीं हो पाई; Internet/Firestore Rules जाँचें। Session हटाया नहीं गया है। विवरण: " + (error?.message || "Unknown error"), true);
     }
   }
 });
