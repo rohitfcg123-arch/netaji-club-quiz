@@ -288,13 +288,6 @@ $("tsLoadDefault").addEventListener("click", async () => {
   catch (e) { console.error(e); setStatus("Default load नहीं हुआ: " + (e?.message || String(e)) + " Firestore rules publish करना न भूलें।", "error"); }
   finally { setBusy(false); }
 });
-$("tsLoadCurrent").addEventListener("click", async () => {
-  if (busy) return;
-  setBusy(true);
-  try { await loadCurrentQuiz(); }
-  catch (e) { console.error(e); setStatus("Current Quiz load नहीं हुआ: " + (e?.message || String(e)), "error"); }
-  finally { setBusy(false); }
-});
 $("tsUseDefault").addEventListener("click", useDefaultForCurrent);
 $("tsReset").addEventListener("click", () => {
   fillForm(defaultBranding);
@@ -303,14 +296,7 @@ $("tsReset").addEventListener("click", () => {
 });
 
 
-// Keep the editor in global/default mode, but prefill a useful quiz code
-// from the last explicitly opened quiz or the current admin live state.
-// We never auto-load that quiz, so it cannot overwrite default branding edits.
-try {
-  const live = JSON.parse(localStorage.getItem("netajiQuizLiveState") || "{}");
-  const savedCode = String(localStorage.getItem("themeStudioLastQuizCode") || live.quiz?.id || "").trim().toUpperCase();
-  if (savedCode) $("tsQuizCode").value = savedCode;
-} catch {}
+// Theme Studio always edits global/default branding; no quiz code is needed.
 fillForm(BRANDING_DEFAULTS);
 onAuthStateChanged(auth, user => {
   if (!user) { authUser = null; location.replace("admin.html"); return; }
@@ -319,21 +305,8 @@ onAuthStateChanged(auth, user => {
     if (restoredDraft) return;
     $("tsStatus").textContent = "Admin verified. Loading saved branding…";
     await loadDefault();
-    const savedTarget = localStorage.getItem(TARGET_KEY) || "default";
-    const savedCode = String($("tsQuizCode").value || "").trim().toUpperCase();
-    if (savedTarget === "current" && savedCode) {
-      document.querySelector('input[name="tsTarget"][value="current"]').checked = true;
-      try {
-        await loadCurrentQuiz();
-      } catch (error) {
-        document.querySelector('input[name="tsTarget"][value="default"]').checked = true;
-        updateSaveLabel();
-        setStatus("Saved default branding loaded. Previous quiz settings could not be loaded: " + (error?.message || String(error)), "error");
-      }
-    } else {
-      document.querySelector('input[name="tsTarget"][value="default"]').checked = true;
-      updateSaveLabel();
-    }
+    
+    updateSaveLabel();
   }).catch(error => {
     console.error("Theme Studio authorization/load failed:", error);
     setStatus("Admin verification or Firebase read failed: " + (error?.message || String(error)), "error");
