@@ -227,10 +227,8 @@ async function submitAnswer(selected) {
       q: currentIndex,
       sel: selected,
       at: serverTimestamp(),
-      elapsedMs: Math.max(0, Math.min(
-        Number(quizState.settings?.questionSeconds || 10) * 1000,
-        Date.now() - Number(questionShownAt || quizState.questionStartedAt || Date.now())
-      ))
+      // Compatibility only. Ranking uses timestamps created by Firestore.
+      elapsedMs: 0
     });
   } catch (err) {
     console.error("Answer submit:", err);
@@ -257,7 +255,7 @@ function updateTimer() {
   if (quizState.status === "live") {
     const sec = Number(quizState.settings?.questionSeconds || 10);
     const remainingMs = Math.max(0, sec * 1000 - (Date.now() - Number(quizState.questionStartedAt || Date.now())));
-    $("timer").textContent = (remainingMs / 1000).toFixed(1) + " sec";
+    $("timer").textContent = Math.ceil(remainingMs / 1000) + " sec";
   }
 }
 setInterval(updateTimer, 250);
