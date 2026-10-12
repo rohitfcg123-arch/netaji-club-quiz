@@ -73,6 +73,71 @@ export const BRANDING_PRESETS = {
   }
 };
 
+export const BRANDING_PRESET_TEXT = {
+  netaji: {
+    clubName:"नेताजी क्लब", competitionLabel:"QUIZ COMPETITION", tagline:"ज्ञान • संस्कृति • एकता",
+    defaultQuizName:"Netaji Club Quiz", welcomeHeading:"नेताजी क्लब क्विज़ प्रतियोगिता",
+    welcomeText:"नेताजी क्लब द्वारा आयोजित क्विज़ में आपका स्वागत है! अपनी जानकारी परखें और ज्ञान, संस्कृति व एकता का उत्सव मनाएँ।",
+    loginHeading:"Player Login", loginText:"Quiz में शामिल होने के लिए अपने Google Account से सुरक्षित Login करें।",
+    joinHeading:"Quiz में शामिल हों", joinText:"अपना नाम और Admin से मिला Quiz Code डालें। फिर Start Quiz दबाएँ।",
+    waitingText:"Admin के Quiz शुरू करने का इंतज़ार है", rankingHeading:"LIVE RANKING",
+    participantsLabel:"Participants Joined", progressLabel:"Questions Progress",
+    rankingSubtitle:"Ranks update automatically as answers arrive", resultsHeading:"Quiz Results & Ranking",
+    winnersHeading:"Congratulations! Top 3 Winners", winnersSubtitle:"आपकी मेहनत, आपका ज्ञान — आज का सम्मान।", footerText:"ज्ञान • संस्कृति • एकता"
+  },
+  independence: {
+    clubName:"नेताजी क्लब", competitionLabel:"INDEPENDENCE DAY SPECIAL", tagline:"एकता • स्वतंत्रता • गौरव",
+    defaultQuizName:"Independence Day Quiz", welcomeHeading:"🇮🇳 स्वतंत्रता दिवस क्विज़ प्रतियोगिता",
+    welcomeText:"15 अगस्त के इस गौरवपूर्ण अवसर पर आपका स्वागत है! भारत के इतिहास, संविधान और स्वतंत्रता सेनानियों से जुड़े प्रश्नों के साथ अपने ज्ञान को परखें। जय हिन्द! 🇮🇳",
+    loginHeading:"प्रतियोगिता में प्रवेश करें", loginText:"अपने Google Account से सुरक्षित Login करें और देशभक्ति क्विज़ में शामिल हों।",
+    joinHeading:"क्विज़ में शामिल हों", joinText:"अपना नाम और Admin से मिला Quiz Code डालें, फिर Start Quiz दबाएँ।",
+    waitingText:"क्विज़ शुरू होने का इंतज़ार करें — जय हिन्द!", rankingHeading:"🇮🇳 LIVE LEADERBOARD",
+    participantsLabel:"देशभक्त प्रतिभागी", progressLabel:"प्रश्नों की प्रगति", rankingSubtitle:"हर सही उत्तर के साथ अपनी रैंक देखें",
+    resultsHeading:"स्वतंत्रता दिवस परिणाम", winnersHeading:"🏆 आज के विजेता", winnersSubtitle:"ज्ञान और देशभक्ति को सलाम!", footerText:"जय हिन्द • वन्दे मातरम्"
+  },
+  diwali: {
+    clubName:"नेताजी क्लब", competitionLabel:"DIWALI SPECIAL QUIZ", tagline:"रोशनी • खुशियाँ • ज्ञान",
+    defaultQuizName:"Diwali Quiz", welcomeHeading:"🪔 दीपावली क्विज़ प्रतियोगिता",
+    welcomeText:"दीपों और खुशियों के इस पावन त्योहार पर आपका स्वागत है! दीपावली की परंपराओं, संस्कृति और ज्ञान से जुड़े प्रश्नों का आनंद लें। शुभ दीपावली! ✨",
+    loginHeading:"शुभ शुरुआत करें", loginText:"अपने Google Account से Login करके दीपावली क्विज़ में शामिल हों।",
+    joinHeading:"क्विज़ में शामिल हों", joinText:"अपना नाम और Admin से मिला Quiz Code डालें, फिर Start Quiz दबाएँ।",
+    waitingText:"क्विज़ शुरू होने तक दीपों की रोशनी का आनंद लें 🪔", rankingHeading:"🪔 LIVE RANKING",
+    participantsLabel:"प्रतिभागी", progressLabel:"प्रश्नों की प्रगति", rankingSubtitle:"आपकी रैंक हर उत्तर के साथ अपडेट होती है",
+    resultsHeading:"दीपावली क्विज़ परिणाम", winnersHeading:"✨ दीपावली के विजेता", winnersSubtitle:"आपके ज्ञान से जगमगाए जीत का उत्सव!", footerText:"शुभ दीपावली • खुशियाँ बाँटें"
+  },
+  saraswati: {
+    clubName:"नेताजी क्लब", competitionLabel:"SARASWATI PUJA SPECIAL", tagline:"विद्या • बुद्धि • ज्ञान",
+    defaultQuizName:"Saraswati Puja Quiz", welcomeHeading:"🌼 सरस्वती पूजा क्विज़ प्रतियोगिता",
+    welcomeText:"माँ सरस्वती के आशीर्वाद और विद्या के उत्सव में आपका हार्दिक स्वागत है! अपने ज्ञान का प्रदर्शन करें और इस पावन अवसर को यादगार बनाएँ। 🙏",
+    loginHeading:"विद्या उत्सव में प्रवेश करें", loginText:"अपने Google Account से सुरक्षित Login करके क्विज़ में शामिल हों।",
+    joinHeading:"क्विज़ में शामिल हों", joinText:"अपना नाम और Admin से मिला Quiz Code डालें, फिर Start Quiz दबाएँ।",
+    waitingText:"क्विज़ शुरू होने का इंतज़ार करें। माँ सरस्वती की कृपा बनी रहे।", rankingHeading:"🌼 LIVE RANKING",
+    participantsLabel:"विद्यार्थी प्रतिभागी", progressLabel:"प्रश्नों की प्रगति", rankingSubtitle:"हर उत्तर के साथ रैंक अपडेट होती है",
+    resultsHeading:"सरस्वती पूजा क्विज़ परिणाम", winnersHeading:"🏆 ज्ञान के विजेता", winnersSubtitle:"माँ सरस्वती का आशीर्वाद आप सब पर बना रहे।", footerText:"जय माँ सरस्वती • विद्या ददातु"
+  },
+  kali: {
+    clubName:"नेताजी क्लब", competitionLabel:"KALI PUJA SPECIAL", tagline:"भक्ति • शक्ति • ज्ञान",
+    defaultQuizName:"Kali Puja Quiz", welcomeHeading:"🔱 जय माँ काली! माँ के आशीर्वाद से रोशन हो जीवन।",
+    welcomeText:"माँ काली की भक्ति, ज्ञान और उत्सव के इस पावन अवसर पर आपका हार्दिक स्वागत है! नेताजी क्लब द्वारा आयोजित विशेष काली पूजा क्विज़ प्रतियोगिता में भाग लें, अपने ज्ञान का प्रदर्शन करें और जीतें सम्मान एवं गौरव। आइए, भक्ति और उत्साह के साथ इस उत्सव को और भी यादगार बनाएँ। जय माँ काली! 🪔",
+    loginHeading:"माँ के उत्सव में प्रवेश करें", loginText:"अपने Google Account से सुरक्षित Login करके काली पूजा क्विज़ में शामिल हों।",
+    joinHeading:"काली पूजा क्विज़ में शामिल हों", joinText:"अपना नाम और Admin से मिला Quiz Code डालें, फिर Start Quiz दबाएँ।",
+    waitingText:"माँ काली के आशीर्वाद के साथ क्विज़ शुरू होने का इंतज़ार करें।", rankingHeading:"🔱 LIVE RANKING",
+    participantsLabel:"भक्त प्रतिभागी", progressLabel:"प्रश्नों की प्रगति", rankingSubtitle:"हर उत्तर के साथ आपकी रैंक अपडेट होती है",
+    resultsHeading:"काली पूजा क्विज़ परिणाम", winnersHeading:"🏆 काली पूजा के विजेता", winnersSubtitle:"माँ काली का आशीर्वाद और शुभकामनाएँ!", footerText:"जय माँ काली! 🪔"
+  },
+  durga: {
+    clubName:"नेताजी क्लब", competitionLabel:"DURGA PUJA SPECIAL", tagline:"शक्ति • संस्कृति • उत्सव",
+    defaultQuizName:"Durga Puja Quiz", welcomeHeading:"🌺 दुर्गा पूजा क्विज़ प्रतियोगिता",
+    welcomeText:"माँ दुर्गा के आगमन और उत्सव के इस शुभ अवसर पर आपका हार्दिक स्वागत है! संस्कृति, परंपराओं और ज्ञान से जुड़े प्रश्नों के साथ दुर्गा पूजा का आनंद लें। शुभो दुर्गोत्सव! 🌺",
+    loginHeading:"उत्सव में प्रवेश करें", loginText:"अपने Google Account से सुरक्षित Login करके दुर्गा पूजा क्विज़ में शामिल हों।",
+    joinHeading:"क्विज़ में शामिल हों", joinText:"अपना नाम और Admin से मिला Quiz Code डालें, फिर Start Quiz दबाएँ।",
+    waitingText:"माँ दुर्गा के आगमन के उत्सव में क्विज़ शुरू होने का इंतज़ार करें।", rankingHeading:"🌺 LIVE RANKING",
+    participantsLabel:"प्रतिभागी", progressLabel:"प्रश्नों की प्रगति", rankingSubtitle:"हर उत्तर के साथ रैंक अपडेट होती है",
+    resultsHeading:"दुर्गा पूजा क्विज़ परिणाम", winnersHeading:"🏆 दुर्गोत्सव के विजेता", winnersSubtitle:"माँ दुर्गा की कृपा आप सभी पर बनी रहे।", footerText:"शुभो दुर्गोत्सव • जय माँ दुर्गा"
+  },
+  custom: {}
+};
+
 const HEX = /^#[0-9a-fA-F]{6}$/;
 function safeColor(value, fallback) { return HEX.test(String(value || "")) ? String(value) : fallback; }
 function safeUrl(value) {
