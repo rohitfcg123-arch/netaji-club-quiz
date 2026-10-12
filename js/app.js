@@ -100,7 +100,7 @@ function renderHostQuestion(q) {
     const letter = String.fromCharCode(65 + i);
     const option = document.createElement("article");
     option.className = "host-option host-option-" + letter.toLowerCase();
-    const enText = en.options && en.options[i] ? en.options[i] : (en.fallback && i < (q?.options || []).length ? q.options[i] : "—");
+    const enText = en.options && en.options[i] ? en.options[i] : "—";
     const hiText = hi.options && hi.options[i] ? hi.options[i] : (i < (q?.options || []).length ? q.options[i] : "—");
     const bnText = bn.options && bn.options[i] ? bn.options[i] : "—";
     option.innerHTML = '<span class="host-option-letter">' + letter + '</span><div class="host-option-copy"><strong class="host-option-en"></strong><span class="host-option-hi"></span><span class="host-option-bn"></span></div>';
