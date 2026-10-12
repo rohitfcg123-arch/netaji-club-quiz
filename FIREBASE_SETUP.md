@@ -1,6 +1,6 @@
 # Firebase setup — required before real multi-device quizzes
 
-This repository currently provides a browser-only prototype. The Admin and player pages use localStorage, so they can only share state in the same browser profile/device and same origin. It is not suitable for a real public competition across separate phones.
+The app uses Firebase Authentication and Cloud Firestore for Admin authorization, quiz metadata, questions, player answers and realtime quiz state. localStorage is used as a convenience cache, not as the cross-device source of truth. Before using it across devices, make sure Firebase config is correct, the current Firestore Rules are published, and the Admin UID is allowlisted.
 
 ## Configure your own Firebase project
 1. Sign in to Firebase Console with the Google account you want to own the project.
@@ -14,13 +14,13 @@ This repository currently provides a browser-only prototype. The Admin and playe
 ## Security
 - Never commit service-account JSON files, private keys, or deployment tokens.
 - A web API key is not a secret, but it does not provide authorization. Authentication and Firestore/Functions authorization must enforce access.
-- Current pages do not yet use the Firebase configuration. Do not assume that Firebase has been connected just because the config file exists.
+- The current pages import the Firebase Web App configuration in `js/firebase.js`. A repository commit alone does not publish Firestore Rules or configure Authentication providers.
 
 ## Current feature status
 - Quiz Code generation: implemented in browser prototype.
 - Add questions: browser prototype only.
 - Automatic question advance every 10 seconds: browser prototype only.
-- Cross-device synchronization: not implemented yet.
+- Cross-device synchronization: implemented through Firestore real-time listeners for the live quiz and branding settings.
 - Server-validated answers/scoring and secure admin authorization: not implemented in the frontend yet.
 
 
