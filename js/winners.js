@@ -1,9 +1,13 @@
 import { auth, db } from "./firebase.js";
+import { BRANDING_DEFAULTS, normalizeBranding, resolveBranding, applyBranding, listenForDefaultBranding } from "./branding.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { collection, doc, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 const $=id=>document.getElementById(id);
 const KEY="netajiQuizLiveState";
 let activeRows=[];
+let globalBranding=normalizeBranding(BRANDING_DEFAULTS);
+let activeQuizBranding=null;
+function refreshBranding(){applyBranding(resolveBranding(globalBranding,activeQuizBranding));}
 function esc(v){return String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;")}
 function readLocal(){try{return JSON.parse(localStorage.getItem(KEY)||"{}")}catch{return {}}}
 function duration(ms){ms=Math.max(0,Number(ms)||0);const s=ms/1000;return s>=60?Math.floor(s/60)+"m "+(s%60).toFixed(1)+"s":s.toFixed(1)+"s"}
@@ -25,6 +29,8 @@ async function loadResults(){
   const qref=doc(db,"quizzes",code),quizSnap=await getDoc(qref);
   if(!quizSnap.exists())throw new Error("Firebase में Quiz "+code+" नहीं मिला।");
   const quiz=quizSnap.data();
+  activeQuizBranding=quiz.settings?.branding||null;
+  refreshBranding();
   const [playerSnap,answerSnap,keySnap,questionSnap,resultSnap]=await Promise.all([
    getDocs(collection(db,"quizzes",code,"players")),getDocs(collection(db,"quizzes",code,"answers")),getDocs(collection(db,"quizzes",code,"keys")),getDocs(collection(db,"quizzes",code,"questions")),getDocs(collection(db,"quizzes",code,"results"))
   ]);
@@ -66,4 +72,5 @@ onAuthStateChanged(auth,async user=>{
   }
  }
 });
+listenForDefaultBranding((branding,error)=>{globalBranding=branding;refreshBranding();if(error)console.warn("Default branding sync unavailable:",error)});
 $("wRefresh").addEventListener("click",loadResults);$("wCelebrate").addEventListener("click",()=>{confetti();document.querySelector(".w-hero").animate([{transform:"scale(.98)",opacity:.75},{transform:"scale(1)",opacity:1}],{duration:650,easing:"ease-out"});document.querySelector(".w-stage").scrollIntoView({behavior:"smooth",block:"center"})});
