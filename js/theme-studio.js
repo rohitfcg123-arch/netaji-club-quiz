@@ -20,6 +20,7 @@ let currentBranding = normalizeBranding(BRANDING_DEFAULTS);
 let defaultBranding = normalizeBranding(BRANDING_DEFAULTS);
 let authUser = null;
 let busy = false;
+let loadedCurrentQuizCode = "";
 
 function setStatus(message, type = "") {
   const el = $("tsStatus");
@@ -27,6 +28,7 @@ function setStatus(message, type = "") {
   el.className = "notice ts-status" + (type ? " " + type : "");
 }
 function quizCode() { return String($("tsQuizCode").value || "").trim().toUpperCase(); }
+$("tsQuizCode").addEventListener("input", () => { if (quizCode() !== loadedCurrentQuizCode) loadedCurrentQuizCode = ""; });
 function selectedTarget() {
   return document.querySelector('input[name="tsTarget"]:checked')?.value || "default";
 }
@@ -108,6 +110,7 @@ async function loadCurrentQuiz() {
   const snap = await getDoc(doc(db, "quizzes", code));
   if (!snap.exists()) throw new Error("Firebase में Quiz Code " + code + " नहीं मिला।");
   const quiz = snap.data();
+  loadedCurrentQuizCode = code;
   const config = quiz.settings?.branding?.useDefaultTheme
     ? defaultBranding
     : quiz.settings?.branding || defaultBranding;
@@ -136,15 +139,17 @@ async function saveCurrent(config) {
   const snap = await getDoc(quizRef);
   if (!snap.exists()) throw new Error("Quiz " + code + " Firebase में नहीं मिला। पहले Admin Dashboard में Save Quiz करें।");
   const old = snap.data();
+  const loadedForRename = loadedCurrentQuizCode === code;
+  const nextQuizName = loadedForRename ? (config.text.defaultQuizName || old.name || code) : (old.name || code);
   await setDoc(quizRef, {
-    name: config.text.defaultQuizName || old.name || code,
+    name: nextQuizName,
     settings: { ...(old.settings || {}), branding: {
       preset: config.preset, colors: config.colors, text: config.text,
       assets: config.assets, effects: config.effects, useDefaultTheme: false
     }},
     updatedAt: serverTimestamp()
   }, { merge: true });
-  setStatus('✅ Branding and quiz name saved for "' + (config.text.defaultQuizName || old.name || code) + '". Other quizzes are unchanged.', "success");
+  setStatus(loadedForRename ? ('✅ Branding and quiz name saved for "' + nextQuizName + '". Other quizzes are unchanged.') : ('✅ Branding saved for "' + nextQuizName + '". Existing quiz name was kept; load this quiz first to rename it.'), "success");
 }
 async function saveSelected() {
   if (busy) return;
