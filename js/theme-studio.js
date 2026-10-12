@@ -216,7 +216,11 @@ $("tsLoadCurrent").addEventListener("click", async () => {
   finally { setBusy(false); }
 });
 $("tsUseDefault").addEventListener("click", useDefaultForCurrent);
-$("tsReset").addEventListener("click", () => fillForm(defaultBranding));
+$("tsReset").addEventListener("click", () => {
+  fillForm(defaultBranding);
+  document.querySelector('input[name="tsTarget"][value="default"]').checked = true;
+  updateSaveLabel();
+});
 document.querySelectorAll('input[name="tsTarget"]').forEach(el => el.addEventListener("change", updateSaveLabel));
 
 try {
