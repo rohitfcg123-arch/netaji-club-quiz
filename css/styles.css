@@ -177,3 +177,8 @@ body.host-mode {
  .host-mode .host-footer{flex-wrap:wrap;justify-content:space-between}
  .host-foot-divider{display:none}
 }
+
+
+/* Admin-only timer audio preference */
+.sound-setting{display:flex!important;align-items:center;gap:10px;padding:12px 14px;border:1px solid #cbd8ea;border-radius:12px;background:#edf2ff;color:#203b60;font-weight:800!important;line-height:1.35}
+.panel .sound-setting input#timerSoundEnabled{width:21px;height:21px;min-height:21px;flex:0 0 21px;margin:0;accent-color:#08a85e}
