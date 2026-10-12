@@ -51,6 +51,17 @@ function authError(e) {
 }
 
 if (hostMode) {
+  // The host review screen is opened separately from Admin Dashboard; provide a clear return path.
+  const hostHeader = document.querySelector("header.top");
+  if (hostHeader && !document.getElementById("hostAdminBack")) {
+    const back = document.createElement("a");
+    back.id = "hostAdminBack";
+    back.className = "link";
+    back.href = "admin.html";
+    back.textContent = "← Admin Home";
+    back.style.cssText = "display:inline-block;background:#fff8e8;border:1px solid #d9cba8;border-radius:10px;padding:9px 12px;text-decoration:none;white-space:nowrap";
+    hostHeader.appendChild(back);
+  }
   document.body.classList.add("host-mode");
   document.querySelector(".hero")?.classList.add("hidden");
   $("game").classList.remove("hidden");
