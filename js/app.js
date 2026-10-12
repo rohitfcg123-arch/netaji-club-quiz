@@ -1,7 +1,8 @@
 import { auth, db } from "./firebase.js";
 import {
   createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut,
-  onAuthStateChanged, updateProfile, setPersistence, browserLocalPersistence
+  onAuthStateChanged, updateProfile, setPersistence, browserLocalPersistence,
+  GoogleAuthProvider, signInWithRedirect, getRedirectResult
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {
   doc, getDoc, onSnapshot, setDoc, serverTimestamp
@@ -12,7 +13,7 @@ const params = new URLSearchParams(location.search);
 const hostMode = params.get("host") === "1";
 const requestedCode = (params.get("code") || "").trim().toUpperCase();
 let activeCode = "", playerName = "", quizState = null, unsubQuiz = null, unsubQuestion = null;
-let score = 0, answered = false, currentUser = null, currentIndex = -1, questionShownAt = 0;
+let score = 0, correctCount = 0, answered = false, currentUser = null, currentIndex = -1, questionShownAt = 0, activeQuestionData = null;
 let selectedLanguage = localStorage.getItem("ncQuizLanguage") || "hi";
 const languageNames = { hi: "हिंदी", en: "English", bn: "বাংলা" };
 function localizedQuestion(q) {
@@ -47,7 +48,9 @@ function authError(e) {
     "auth/weak-password": "Password कम से कम 6 अक्षर का रखें।",
     "auth/invalid-credential": "Email या Password गलत है।",
     "auth/too-many-requests": "बहुत बार कोशिश हुई है। कुछ देर बाद फिर प्रयास करें。",
-    "auth/network-request-failed": "Internet connection जाँचें।"
+    "auth/network-request-failed": "Internet connection जाँचें।",
+    "auth/unauthorized-domain": "Firebase Console में GitHub Pages domain को Authorized domains में जोड़ें।",
+    "auth/operation-not-allowed": "Firebase Console में Google sign-in provider enable करें।"
   };
   return messages[e.code] || e.message || "कुछ गड़बड़ हुई। फिर प्रयास करें।";
 }
@@ -61,6 +64,27 @@ if (hostMode) {
   if (requestedCode) startListening(requestedCode);
   else waiting("Quiz Code नहीं मिला।");
 } else {
+  // Mobile-friendly Google sign-in: redirect avoids popup blockers in Android browsers.
+  $("googleLoginBtn").addEventListener("click", async () => {
+    authNotice("Google Login खोला जा रहा है…");
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      await signInWithRedirect(auth, provider);
+    } catch (err) {
+      console.error("Google Login:", err);
+      authNotice(authError(err));
+    }
+  });
+
+  getRedirectResult(auth).then(result => {
+    if (result?.user) authNotice("Google Login सफल हुआ। अब अपना नाम भरकर Quiz join करें।");
+  }).catch(err => {
+    console.error("Google redirect result:", err);
+    authNotice(authError(err));
+  });
+
   $("authForm").addEventListener("submit", async e => {
     e.preventDefault();
     authNotice("Login हो रहा है…");
@@ -116,7 +140,7 @@ if (hostMode) {
 
   $("joinForm").addEventListener("submit", async e => {
     e.preventDefault();
-    if (!currentUser) { notice("पहले Email और Password से Login करें।"); return; }
+    if (!currentUser) { notice("पहले Google या Email से Login करें।"); return; }
     const code = $("quizCode").value.trim().toUpperCase();
     playerName = $("playerName").value.trim();
     if (!code || !playerName) { notice("Quiz Code और नाम भरें।"); return; }
@@ -141,8 +165,11 @@ if (hostMode) {
         playerName = playerSnap.data().name;
         $("playerName").value = playerName;
       }
+      score = 0; correctCount = 0;
+      if ($("score")) $("score").textContent = "0";
+      if ($("correctCount")) $("correctCount").textContent = "0";
       showGame();
-      notice(playerName + ", आप Quiz से जुड़ गए हैं। भाषा: " + (languageNames[selectedLanguage] || "हिंदी"));
+      notice(playerName + ", आप Quiz से जुड़ गए हैं। Admin के शुरू करने तक Waiting में रहें। भाषा: " + (languageNames[selectedLanguage] || "हिंदी"));
       startListening(code);
     } catch (err) {
       console.error(err);
@@ -181,7 +208,8 @@ function startListening(code) {
       if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
       unsubQuestion = onSnapshot(doc(db, "quizzes", activeCode, "questions", String(idx)), qSnap => {
         if (!qSnap.exists()) { waiting("प्रश्न लोड हो रहा है…"); return; }
-        const q = localizedQuestion(qSnap.data());
+        activeQuestionData = qSnap.data();
+        const q = localizedQuestion(activeQuestionData);
         questionShownAt = Number(quizState.questionStartedAt || Date.now());
         $("status").textContent = "LIVE";
         $("question").textContent = q.question || "";
@@ -190,10 +218,23 @@ function startListening(code) {
         (q.options || []).forEach((o, i) => {
           const b = document.createElement("button");
           b.type = "button";
+          b.dataset.optionIndex = String(i);
           b.textContent = String.fromCharCode(65 + i) + ". " + o;
           if (!hostMode) b.addEventListener("click", () => submitAnswer(i));
           $("options").appendChild(b);
         });
+        // If the player refreshes after answering, preserve the locked answer.
+        if (!hostMode && currentUser) {
+          try {
+            const prior = await getDoc(doc(db, "quizzes", activeCode, "answers", currentUser.uid + "_" + currentIndex));
+            if (prior.exists()) {
+              answered = true;
+              await displayAnswerFeedback(Number(prior.data().sel), q, true);
+            }
+          } catch (answerReadError) {
+            console.warn("Could not restore previous answer state", answerReadError);
+          }
+        }
         updateTimer();
       }, e => {
         console.error("Question listener:", e);
@@ -206,8 +247,32 @@ function startListening(code) {
   });
 }
 
+async function displayAnswerFeedback(selected, q, fromPrevious = false) {
+  const keySnap = await getDoc(doc(db, "quizzes", activeCode, "keys", String(currentIndex)));
+  if (!keySnap.exists()) throw new Error("Correct answer key is not available.");
+  const correctIndex = Number(keySnap.data().correctIndex);
+  if (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex > 3) throw new Error("Correct answer key is invalid.");
+  [...$("options").children].forEach((button, i) => {
+    button.disabled = true;
+    button.classList.remove("answer-correct", "answer-wrong");
+    if (i === correctIndex) button.classList.add("answer-correct");
+    if (i === selected && selected !== correctIndex) button.classList.add("answer-wrong");
+  });
+  if (selected === correctIndex) {
+    if (!fromPrevious) {
+      correctCount += 1;
+      score += Number(quizState?.settings?.pointsPerCorrect || 10);
+    }
+    $("feedback").textContent = "✅ सही जवाब! Correct: " + (q.options?.[correctIndex] || "");
+  } else {
+    $("feedback").textContent = "❌ गलत जवाब। सही उत्तर: " + (q.options?.[correctIndex] || "");
+  }
+  if ($("score")) $("score").textContent = String(score);
+  if ($("correctCount")) $("correctCount").textContent = String(correctCount);
+}
+
 async function submitAnswer(selected) {
-  if (answered || !currentUser || !activeCode || !quizState) return;
+  if (answered || !currentUser || !activeCode || !quizState || quizState.status !== "live") return;
   answered = true;
   [...$("options").children].forEach(x => x.disabled = true);
   try {
@@ -215,23 +280,28 @@ async function submitAnswer(selected) {
       uid: currentUser.uid,
       q: currentIndex,
       sel: selected,
-      // Server timestamp records when Firestore accepted the answer.
       at: serverTimestamp(),
-      // Time spent on this question, measured in milliseconds.
       elapsedMs: Math.max(0, Math.min(
         Number(quizState.settings?.questionSeconds || 10) * 1000,
         Date.now() - Number(questionShownAt || quizState.questionStartedAt || Date.now())
       ))
     });
-    $("feedback").textContent = "आपका जवाब जमा हो गया।";
   } catch (err) {
     console.error("Answer submit:", err);
     answered = false;
     $("feedback").textContent = "जवाब जमा नहीं हुआ: " + authError(err);
     [...$("options").children].forEach(x => x.disabled = false);
+    return;
+  }
+  try {
+    const q = localizedQuestion(activeQuestionData || {});
+    await displayAnswerFeedback(selected, q);
+  } catch (err) {
+    // Keep the submitted choice locked even if answer feedback retrieval fails.
+    console.error("Answer feedback:", err);
+    $("feedback").textContent = "✅ आपका जवाब लॉक हो गया है। सही उत्तर दिखाने में समस्या हुई; जवाब बदला नहीं जा सकता।";
   }
 }
-
 function updateTimer() {
   if (!quizState) return;
   if (quizState.status === "starting") {
