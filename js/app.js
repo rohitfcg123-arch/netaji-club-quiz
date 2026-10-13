@@ -424,7 +424,18 @@ function startListening(code) {
   if (unsubQuiz) unsubQuiz();
   unsubQuiz = onSnapshot(doc(db, "quizzes", activeCode), snap => {
     if (!snap.exists()) { waiting("इस Quiz Code का Quiz नहीं मिला।"); return; }
-    quizState = snap.data();
+    const incomingQuizState = snap.data();
+    const previousQuizStatus = quizState?.status || "";
+    const previousQuizRunId = String(quizState?.runId || "");
+    // Countdown-to-live transition must force a fresh question subscription.
+    // This prevents the Review screen retaining a stale question/timer state.
+    if (hostMode && incomingQuizState.status === "live" &&
+        (previousQuizStatus !== "live" || String(incomingQuizState.runId || "") !== previousQuizRunId)) {
+      activeQuestionData = null;
+      currentIndex = -1;
+      if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
+    }
+    quizState = incomingQuizState;
     refreshActiveBranding();
     if (hostMode) {
       const newRunId = String(quizState.runId || "");
