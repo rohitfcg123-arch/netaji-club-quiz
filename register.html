@@ -66,7 +66,7 @@ let CLUB_UPI_ID = "";
 const CLUB_PAYEE_NAME = "Netaji Club";
 let REGISTRATION_FEE_INR = 0;
 let REGISTRATION_TITLE = "";
-const ADMIN_EMAIL = "netajiswt@gmail.com";
+let ADMIN_EMAIL = "netajiswt@gmail.com";
 
 const form = document.getElementById("registrationForm");
 const feeField = document.getElementById("fee");
@@ -85,6 +85,7 @@ function applyRegistrationConfig(config) {
   REGISTRATION_TITLE = String(config?.title || "").trim();
   CLUB_UPI_ID = String(config?.upiId || "").trim();
   REGISTRATION_FEE_INR = Number(config?.feeInr || 0);
+  ADMIN_EMAIL = String(config?.adminEmail || "netajiswt@gmail.com").trim();
   paymentConfigured = Boolean(REGISTRATION_TITLE && CLUB_UPI_ID && /^[A-Za-z0-9._-]+@[A-Za-z0-9.-]+$/.test(CLUB_UPI_ID) && Number.isFinite(REGISTRATION_FEE_INR) && REGISTRATION_FEE_INR > 0);
   document.getElementById("registrationPageTitle").textContent = paymentConfigured ? REGISTRATION_TITLE : "Register for a Quiz";
   document.getElementById("quizName").value = REGISTRATION_TITLE || "Registration settings not available";
