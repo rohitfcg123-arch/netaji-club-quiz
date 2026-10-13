@@ -194,37 +194,37 @@ function playHostTick() {
   }
 }
 function startHostLiveData(code) {
-  // Private ranking data is intentionally not read by the public Review screen.
-  if (!hostAdminVerified || hostDataCode === code) return;
+  if (!hostMode || hostDataCode === code) return;
   hostDataCode = code;
   hostDataUnsubs.forEach(fn => fn());
   hostDataUnsubs = [];
-  const base = ["quizzes", code];
-  const subscribe = (path, callback, label) => {
-    const unsub = onSnapshot(collection(db, ...path), callback, error => {
-      console.error("Host " + label + " listener failed:", error);
-      hostMessage("Live " + label + " sync failed. Firebase Admin permissions/network check karein.", "error");
-    });
-    hostDataUnsubs.push(unsub);
-  };
-  subscribe(base.concat(["players"]), snap => {
-    hostPlayers = snap.docs.map(d => ({ ...d.data(), uid: d.id }));
-    recalculateHostRanking();
+  const unsub = onSnapshot(doc(db, "quizzes", code, "publicReview", "summary"), snap => {
+    const data = snap.exists() ? snap.data() : {};
+    const rows = Array.isArray(data.leaderboard) ? data.leaderboard : [];
+    hostPlayers = rows.map((p, i) => ({
+      uid: String(p.id || i),
+      name: String(p.name || "Participant"),
+      score: Number(p.score || 0),
+      correct: Number(p.correct || 0),
+      answered: Number(p.answered || 0)
+    }));
     updateHostMeta();
-  }, "participants");
-  subscribe(base.concat(["answers"]), snap => {
-    hostAnswers = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-    recalculateHostRanking();
-  }, "answers");
-  subscribe(base.concat(["keys"]), snap => {
-    hostKeys = new Map(snap.docs.map(d => [d.id, Number(d.data().correctIndex)]));
-    recalculateHostRanking();
-  }, "answer keys");
-  subscribe(base.concat(["questionTiming"]), snap => {
-    hostQuestionStarts = new Map(snap.docs.map(d => [d.id, d.data()]));
-    recalculateHostRanking();
-  }, "question timing");
+    const grid = $("hostRankGrid");
+    if (grid) {
+      grid.innerHTML = hostPlayers.length ? hostPlayers.slice(0, 10).map((p, i) => {
+        const rank = i + 1;
+        const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : "";
+        return '<article class="host-rank-card' + (rank <= 3 ? ' host-rank-top-' + rank : '') + '"><div class="host-rank-card-top"><span class="host-rank-number">' + rank + '</span><span class="host-medal">' + medal + '</span></div><strong class="host-player-name">' + escapeHostHtml(p.name) + '</strong><strong class="host-player-score">' + p.score + ' pts</strong><small class="host-player-detail">' + p.correct + ' correct · ' + p.answered + '/' + Number(data.total || quizState?.count || 0) + '</small></article>';
+      }).join("") : '<div class="host-board-empty">Waiting for participants and answers…</div>';
+    }
+    updateHostMeta();
+  }, error => {
+    console.error("Public Review leaderboard sync failed:", error);
+    hostMessage("Leaderboard sync failed: " + (error.message || "Firebase Rules check"), "error");
+  });
+  hostDataUnsubs.push(unsub);
 }
+
 function recalculateHostRanking() {
   if (!hostMode) return;
   const total = Math.max(0, Number(quizState?.count || 0));
@@ -455,7 +455,7 @@ function startListening(code) {
     if (quizState.status !== "live") { waiting(activeBranding?.text?.waitingText || "Admin के Quiz शुरू करने का इंतज़ार है"); return; }
 
     const idx = Number(quizState.currentIndex || 0);
-    if (idx !== currentIndex) {
+    if (idx !== currentIndex || (hostMode && !activeQuestionData)) {
       if (hostMode) {
         hostBaseRanks = new Map(hostCurrentRankByUid);
         hostHasRankBaseline = hostBaseRanks.size > 0;
