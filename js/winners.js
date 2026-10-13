@@ -12,38 +12,24 @@ function esc(v){return String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt
 function readLocal(){try{return JSON.parse(localStorage.getItem(KEY)||"{}")}catch{return {}}}
 function duration(ms){ms=Math.max(0,Number(ms)||0);const s=ms/1000;return s>=60?Math.floor(s/60)+"m "+(s%60).toFixed(1)+"s":s.toFixed(1)+"s"}
 function avatar(p){const url=p.photoURL||p.photoUrl||p.photo||"";return url?'<img src="'+esc(url)+'" alt="'+esc(p.name||"Winner")+'" referrerpolicy="no-referrer" onerror="this.remove();this.parentElement.textContent=\''+esc((p.name||"?").trim().charAt(0).toUpperCase())+'\'">':esc((p.name||"?").trim().charAt(0).toUpperCase())}
-let celebrationAudioContext=null;
+let celebrationAudio=null;
 function playCelebrationSound(){
  try{
-  const AudioCtor=window.AudioContext||window.webkitAudioContext;
-  if(!AudioCtor)return;
-  if(!celebrationAudioContext)celebrationAudioContext=new AudioCtor();
-  const ctx=celebrationAudioContext;
-  const begin=()=>scheduleCelebrationAudio(ctx);
-  if(ctx.state==="suspended")ctx.resume().then(begin).catch(error=>console.debug("Celebration audio blocked:",error));
-  else begin();
- }catch(error){console.debug("Celebration audio unavailable:",error)}
-}
-function scheduleCelebrationAudio(ctx){
- const now=ctx.currentTime,duration=3.2,sampleRate=ctx.sampleRate;
- // A soft, layered crowd roar, synthesized locally so no external audio file is required.
- const length=Math.ceil(sampleRate*duration),buffer=ctx.createBuffer(1,length,sampleRate),data=buffer.getChannelData(0);
- for(let i=0;i<length;i++)data[i]=(Math.random()*2-1)*(.55+Math.random()*.45);
- const crowdSource=ctx.createBufferSource();crowdSource.buffer=buffer;
- const crowdBand=ctx.createBiquadFilter();crowdBand.type="bandpass";crowdBand.frequency.value=850;crowdBand.Q.value=.65;
- const crowdLow=ctx.createBiquadFilter();crowdLow.type="lowpass";crowdLow.frequency.value=1900;
- const crowdGain=ctx.createGain();crowdGain.gain.setValueAtTime(.0001,now);crowdGain.gain.linearRampToValueAtTime(.11,now+.28);crowdGain.gain.setValueAtTime(.095,now+2.25);crowdGain.gain.exponentialRampToValueAtTime(.0001,now+duration);
- crowdSource.connect(crowdBand);crowdBand.connect(crowdLow);crowdLow.connect(crowdGain);crowdGain.connect(ctx.destination);crowdSource.start(now);crowdSource.stop(now+duration);
- // A few warm, distant cheering tones make the crowd layer feel less like plain noise.
- [390,520,660].forEach((frequency,index)=>{const osc=ctx.createOscillator(),gain=ctx.createGain(),lfo=ctx.createOscillator(),lfoGain=ctx.createGain();osc.type="sine";osc.frequency.value=frequency;lfo.type="sine";lfo.frequency.value=.7+index*.23;lfoGain.gain.value=frequency*.025;lfo.connect(lfoGain);lfoGain.connect(osc.frequency);gain.gain.setValueAtTime(.0001,now);gain.gain.linearRampToValueAtTime(.012,now+.45);gain.gain.setValueAtTime(.01,now+2.2);gain.gain.exponentialRampToValueAtTime(.0001,now+duration);osc.connect(gain);gain.connect(ctx.destination);lfo.start(now);osc.start(now);osc.stop(now+duration);lfo.stop(now+duration)});
- // Rapid, irregular noise bursts create the clapping/applause layer.
- for(let i=0;i<42;i++){
-  const at=now+.08+Math.random()*2.45,clapBuffer=ctx.createBuffer(1,Math.ceil(sampleRate*.095),sampleRate),samples=clapBuffer.getChannelData(0);
-  for(let j=0;j<samples.length;j++)samples[j]=(Math.random()*2-1)*(1-j/samples.length);
-  const source=ctx.createBufferSource(),filter=ctx.createBiquadFilter(),gain=ctx.createGain();source.buffer=clapBuffer;filter.type="highpass";filter.frequency.value=900+Math.random()*1300;
-  const volume=.025+Math.random()*.075;gain.gain.setValueAtTime(.0001,at);gain.gain.linearRampToValueAtTime(volume,at+.003);gain.gain.exponentialRampToValueAtTime(.0001,at+.085);
-  source.connect(filter);filter.connect(gain);gain.connect(ctx.destination);source.start(at);source.stop(at+.095);
- }
+  // Play the user's uploaded real crowd/applause MP3, restarting it on every click.
+  if(!celebrationAudio){
+   celebrationAudio=new Audio("./assets/applause-crowd-cheering.mp3?v=20261014-1");
+   celebrationAudio.preload="auto";
+   celebrationAudio.volume=1;
+   celebrationAudio.addEventListener("error",()=>showMessage("Celebration sound load nahi hua. assets/applause-crowd-cheering.mp3 ka path check karein."));
+  }
+  celebrationAudio.pause();
+  celebrationAudio.currentTime=0;
+  const playback=celebrationAudio.play();
+  if(playback&&typeof playback.catch==="function")playback.catch(error=>{
+   console.warn("Celebration audio playback failed:",error);
+   showMessage("Sound play nahi hua. Ek baar Celebrate Again button tap karein aur phone media volume check karein.");
+  });
+ }catch(error){console.warn("Celebration audio unavailable:",error)}
 }
 function replayWinnerAnimation(){
  document.querySelectorAll(".w-winner").forEach(el=>{el.style.animation="none";void el.offsetWidth;el.style.animation="";});
