@@ -350,6 +350,7 @@ if (hostMode) {
     // Firestore rules expose quiz metadata and only the currently active question.
     hostAdminVerified = true;
     startListening(requestedCode);
+    startHostLiveData(requestedCode);
     hostMessage("Live Review connected — waiting for quiz updates…", "success");
   }
 } else {
