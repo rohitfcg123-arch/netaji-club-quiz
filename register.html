@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#fff4d8">
 <title>Quiz Registration | Netaji Club</title>
-<link rel="stylesheet" href="css/styles.css?v=20261013-registration-1">
+<link rel="stylesheet" href="css/styles.css?v=20261013-registration-settings-1">
 <style>
 .registration-card{max-width:720px;margin:28px auto}
 .registration-card h2{color:#862127;font-size:clamp(28px,5vw,40px);margin:8px 0}
@@ -30,16 +30,16 @@
 <main>
   <section class="card registration-card">
     <p class="eyebrow">NETAJI CLUB • QUIZ REGISTRATION</p>
-    <h2>Register for a Quiz</h2>
+    <h2 id="registrationPageTitle">Register for a Quiz</h2>
     <p>Fill in your details below. After payment, enter the UPI reference number and submit your registration by email to the club.</p>
-    <div class="notice" id="setupNotice" role="status">Payment setup is not complete yet. The club UPI ID and registration fee must be configured before accepting registrations.</div>
+    <div class="notice" id="setupNotice" role="status">Registration settings load ho rahi hain…</div>
     <form id="registrationForm" class="registration-form">
       <label for="fullName">Contestant Full Name <span class="required">*</span></label>
       <input id="fullName" name="fullName" maxlength="80" autocomplete="name" required placeholder="Enter your full name">
       <label for="email">Email ID <span class="required">*</span></label>
       <input id="email" name="email" type="email" maxlength="120" autocomplete="email" required placeholder="you@example.com">
-      <label for="quizName" class="full">Quiz / Contest <span class="required">*</span></label>
-      <input id="quizName" name="quizName" class="full" maxlength="120" required placeholder="Enter the quiz name">
+      <label for="quizName" class="full">Quiz / Contest</label>
+      <input id="quizName" name="quizName" class="full" readonly value="Loading quiz name…" aria-describedby="setupNotice">
       <label for="fee">Registration Fee (₹)</label>
       <input id="fee" name="fee" type="text" readonly value="To be announced">
       <label for="utr">UPI Reference Number / UTR <span class="required">*</span></label>
@@ -59,11 +59,13 @@
     <p class="help-note">The Pay Now button opens a UPI app when a valid UPI ID and fee are configured. After paying, return here and enter the UTR. Submitting opens your email app with the registration details filled in; you must press Send. The club will verify the payment manually. This page does not store entries in Firebase or any database.</p>
   </section>
 </main>
-<script>
-/* CLUB SETUP: replace the UPI ID and fee below before publishing registration publicly. */
-const CLUB_UPI_ID = "REPLACE_WITH_CLUB_UPI_ID";
+<script type="module">
+import { db } from "./js/firebase.js";
+import { doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+let CLUB_UPI_ID = "";
 const CLUB_PAYEE_NAME = "Netaji Club";
-const REGISTRATION_FEE_INR = 0; // Set the fixed fee for this registration page.
+let REGISTRATION_FEE_INR = 0;
+let REGISTRATION_TITLE = "";
 const ADMIN_EMAIL = "netajiswt@gmail.com";
 
 const form = document.getElementById("registrationForm");
@@ -78,14 +80,35 @@ if (Number.isFinite(REGISTRATION_FEE_INR) && REGISTRATION_FEE_INR > 0) {
   amountField.value = REGISTRATION_FEE_INR.toFixed(2);
   amountField.readOnly = true;
 }
-const paymentConfigured = CLUB_UPI_ID && !CLUB_UPI_ID.startsWith("REPLACE_") && Number.isFinite(REGISTRATION_FEE_INR) && REGISTRATION_FEE_INR > 0;
-if (paymentConfigured) {
-  setupNotice.textContent = "Registration is open. Pay the exact fee shown, then return and submit your UTR.";
-  setupNotice.style.background = "#e1f5e7";
-} else {
-  payButton.disabled = true;
-  payButton.title = "The club UPI ID and fixed registration fee must be configured first.";
+let paymentConfigured = false;
+function applyRegistrationConfig(config) {
+  REGISTRATION_TITLE = String(config?.title || "").trim();
+  CLUB_UPI_ID = String(config?.upiId || "").trim();
+  REGISTRATION_FEE_INR = Number(config?.feeInr || 0);
+  paymentConfigured = Boolean(REGISTRATION_TITLE && CLUB_UPI_ID && /^[A-Za-z0-9._-]+@[A-Za-z0-9.-]+$/.test(CLUB_UPI_ID) && Number.isFinite(REGISTRATION_FEE_INR) && REGISTRATION_FEE_INR > 0);
+  document.getElementById("registrationPageTitle").textContent = paymentConfigured ? REGISTRATION_TITLE : "Register for a Quiz";
+  document.getElementById("quizName").value = REGISTRATION_TITLE || "Registration settings not available";
+  feeField.value = paymentConfigured ? "₹" + REGISTRATION_FEE_INR.toFixed(2) : "To be announced";
+  amountField.value = paymentConfigured ? REGISTRATION_FEE_INR.toFixed(2) : "";
+  amountField.readOnly = paymentConfigured;
+  payButton.disabled = !paymentConfigured;
+  if (paymentConfigured) {
+    setupNotice.textContent = "Registration is open. Pay the exact fee shown, then return and submit your UTR.";
+    setupNotice.style.background = "#e1f5e7";
+    formNotice.textContent = "No account or Google login is required. Check your details before opening your email app.";
+  } else {
+    setupNotice.textContent = "Registration setup abhi complete nahi hai. Admin Portal mein Registration Settings se contest name, fee aur UPI ID save karna hoga.";
+    payButton.title = "Admin Portal se registration settings configure karni hongi.";
+  }
 }
+onSnapshot(doc(db, "siteSettings", "registrationConfig"), snapshot => {
+  applyRegistrationConfig(snapshot.exists() ? snapshot.data() : {});
+}, error => {
+  console.error("Registration settings sync failed:", error);
+  applyRegistrationConfig({});
+  setupNotice.textContent = "Registration settings load nahi hui. Admin se contact karein.";
+  formNotice.textContent = "Settings load error: " + (error.message || "Connection/Firestore Rules check karein.");
+});
 payButton.addEventListener("click", () => {
   if (!paymentConfigured) {
     formNotice.textContent = "UPI payment is not configured yet. The club must add its UPI ID and fixed fee before this button can open a payment app.";
@@ -112,7 +135,7 @@ form.addEventListener("submit", (event) => {
   const data = new FormData(form);
   const fullName = String(data.get("fullName")).trim();
   const email = String(data.get("email")).trim();
-  const quizName = String(data.get("quizName")).trim();
+  const quizName = REGISTRATION_TITLE || String(data.get("quizName") || "").trim();
   const utr = String(data.get("utr")).trim();
   const paidAmount = String(data.get("paidAmount")).trim();
   const paymentDate = String(data.get("paymentDate") || "").trim() || "Not provided";
