@@ -225,6 +225,15 @@ function watchPlayers(){
   },error=>console.error("Live answer keys sync failed",error)));
 }
 
+function renderPlayersIfChanged(){
+ const list=$("players");
+ if(!list)return;
+ const signature=JSON.stringify((players||[]).map(p=>[p.uid||"",p.name||"",p.email||"",Number(p.score||0)]));
+ if(signature===lastRenderedPlayerSignature)return;
+ lastRenderedPlayerSignature=signature;
+ list.innerHTML=(players||[]).map(p=>"<li>"+escapeHtml(p.name)+" <small>"+escapeHtml(p.email||"")+"</small> — "+(p.score||0)+" points</li>").join("");
+}
+let lastRenderedPlayerSignature="";
 function render(){
  refreshCategoryFilter();
  const visible=visibleQuestionIndexes();
@@ -238,7 +247,7 @@ function render(){
  const secs=Number(quiz.settings?.questionSeconds||10),started=Number(quiz.questionStartedAt||0);
  $("adminTimer").textContent=quiz.status==="live"?(Math.max(0,secs*1000-(Date.now()-started))/1000).toFixed(1)+" sec":"—";
  $("participants").textContent=players.length;
- $("players").innerHTML=players.map(p=>"<li>"+escapeHtml(p.name)+" <small>"+escapeHtml(p.email||"")+"</small> — "+(p.score||0)+" points</li>").join("");
+ renderPlayersIfChanged();
  $("questions").querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const i=Number(b.dataset.del);if(i<0||i>=questions.length)return;if(!confirm("यह प्रश्न हटाना है?"))return;bankQuestions.splice(i,1);questions=bankQuestions;$("deleteStatus").textContent="एक प्रश्न हटा दिया गया।";save()});
  $("questions").querySelectorAll(".question-checkbox").forEach(box=>box.onchange=()=>{const n=$("questions").querySelectorAll(".question-checkbox:checked").length;$("deleteStatus").textContent=n?n+" प्रश्न चुने गए हैं।":"कोई प्रश्न चुना नहीं गया।";updateSelectionButton()});
  $("selectAllQuestions").disabled=!visible.length;
@@ -414,7 +423,15 @@ function runQuestionTimer(){
         clearInterval(autoTimer);autoTimer=null;
         $("end").click();
       }
-    }else render();
+    }else {
+      // Avoid rebuilding the whole question bank on every 250ms timer tick.
+      const remainingMs=Math.max(0,duration-(Date.now()-Number(quiz.questionStartedAt||0)));
+      const timerEl=$("adminTimer");
+      if(timerEl){
+        const value=(remainingMs/1000).toFixed(1)+" sec";
+        if(timerEl.textContent!==value)timerEl.textContent=value;
+      }
+    }
   },250);
 }
 async function advanceQuestion(nextIndex){
@@ -535,7 +552,7 @@ if($("refreshResults"))$("refreshResults").onclick=loadResults;
 const s=read();if(s.quiz){quiz={...quiz,...s.quiz,settings:{questionSeconds:10,questionLimit:100,startDelay:0,...(s.quiz.settings||{})}};const savedBanks=[s.questionBank,s.questions,s.quiz.questions].filter(Array.isArray);bankQuestions=savedBanks.sort((a,b)=>b.length-a.length)[0]||[];questions=bankQuestions;players=s.players||[];$("quizCode").value=quiz.id||"";$("quizName").value=quiz.name||"";current=s.quiz.currentIndex||0;$("questionSeconds").value=quiz.settings.questionSeconds;$("questionLimit").value=quiz.settings.questionLimit;$("startDelay").value=String(quiz.settings.startDelay||0)}
 render();
 restoreRemoteQuestionBank().catch(e=>console.warn("Startup question-bank recovery failed",e));
-function updateLiveOnly(){const s=read();if(s.quiz?.id===quiz.id){players=s.players||[];if(s.quiz.status==="live"&&s.quiz.runId!==quiz.runId){const incoming=Array.isArray(s.quiz.questions)?s.quiz.questions:[];if(incoming.length>=questions.length||!questions.length){quiz={...quiz,...s.quiz};questions=incoming;current=s.quiz.currentIndex||0}else{console.warn("Ignored stale/short live snapshot",incoming.length,"vs current",questions.length)}} if(lastStartError){$("liveStatus").textContent="❌ "+lastStartError;$("quizStatus").textContent="Start Error: "+lastStartError;}else $("liveStatus").textContent=quiz.status==="live"?"🟢 QUIZ LIVE — शुरू हो चुका है • प्रश्न "+Math.min(current+1,questions.length)+" / "+questions.length+" • चलने का समय "+formatElapsed(Date.now()-Number(quiz.startAt||Date.now())):quiz.status==="starting"?"⏳ Quiz "+Math.max(0,Math.ceil((Number(quiz.startAt||0)-Date.now())/1000))+" सेकंड में शुरू होगा…":quiz.status==="completed"?"Quiz समाप्त हो गया है।":"Quiz अभी शुरू नहीं हुआ है।";const secs=Number(quiz.settings?.questionSeconds||10),started=Number(quiz.questionStartedAt||0);$("adminTimer").textContent=quiz.status==="live"?Math.max(0,secs-Math.floor((Date.now()-started)/1000))+" sec":"—";$("participants").textContent=players.length;$("players").innerHTML=players.map(p=>"<li>"+escapeHtml(p.name)+" — "+(p.score||0)+" points</li>").join("")}}
+function updateLiveOnly(){const s=read();if(s.quiz?.id===quiz.id){players=s.players||[];if(s.quiz.status==="live"&&s.quiz.runId!==quiz.runId){const incoming=Array.isArray(s.quiz.questions)?s.quiz.questions:[];if(incoming.length>=questions.length||!questions.length){quiz={...quiz,...s.quiz};questions=incoming;current=s.quiz.currentIndex||0}else{console.warn("Ignored stale/short live snapshot",incoming.length,"vs current",questions.length)}} if(lastStartError){$("liveStatus").textContent="❌ "+lastStartError;$("quizStatus").textContent="Start Error: "+lastStartError;}else $("liveStatus").textContent=quiz.status==="live"?"🟢 QUIZ LIVE — शुरू हो चुका है • प्रश्न "+Math.min(current+1,questions.length)+" / "+questions.length+" • चलने का समय "+formatElapsed(Date.now()-Number(quiz.startAt||Date.now())):quiz.status==="starting"?"⏳ Quiz "+Math.max(0,Math.ceil((Number(quiz.startAt||0)-Date.now())/1000))+" सेकंड में शुरू होगा…":quiz.status==="completed"?"Quiz समाप्त हो गया है।":"Quiz अभी शुरू नहीं हुआ है।";const secs=Number(quiz.settings?.questionSeconds||10),started=Number(quiz.questionStartedAt||0);$("adminTimer").textContent=quiz.status==="live"?Math.max(0,secs-Math.floor((Date.now()-started)/1000))+" sec":"—";$("participants").textContent=players.length;renderPlayersIfChanged()}}
 let defaultBrandingForAdmin = null;
 let quizNameTouched = false;
 $("quizName")?.addEventListener("input", () => { quizNameTouched = true; });
