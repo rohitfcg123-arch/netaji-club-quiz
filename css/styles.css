@@ -394,3 +394,7 @@ body.host-mode.brand-decorations-on .host-header:after{content:"";position:absol
 body.host-mode.brand-decorations-on .host-header>*{position:relative;z-index:1}
 body.host-mode.brand-animations-on .host-rank-card{animation:themeRankEntrance .42s cubic-bezier(.2,.8,.2,1) both}
 @keyframes themeRankEntrance{from{opacity:.6;transform:translateY(7px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+/* Readable status chips: yellow status backgrounds must use dark text. */
+.badge,.status-badge,.quiz-status,.status-chip,[data-quiz-status]{color:#552d22!important;}
+.badge[ data-status="completed"],.status-badge[data-status="completed"],.quiz-status[data-status="completed"],.status-chip[data-status="completed"]{background:#ffedbd!important;color:#552d22!important;border:1px solid #d9b75c;}
