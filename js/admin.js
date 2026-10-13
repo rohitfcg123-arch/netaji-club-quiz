@@ -466,6 +466,20 @@ async function advanceQuestion(nextIndex){
     advancingQuestion=false;
   }
 }
+// When a throttled background tab becomes visible again, reconcile immediately
+// instead of waiting for the next throttled interval callback.
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden||quiz.status!=="live"||advancingQuestion)return;
+  const duration=Number(quiz.settings?.questionSeconds||10)*1000;
+  if(Date.now()-Number(quiz.questionStartedAt||0)>=duration){
+    if(current<questions.length-1) void advanceQuestion(current+1);
+    else $("end")?.click();
+  }else{
+    const remainingMs=Math.max(0,duration-(Date.now()-Number(quiz.questionStartedAt||0)));
+    const timerEl=$("adminTimer");
+    if(timerEl)timerEl.textContent=(remainingMs/1000).toFixed(1)+" sec";
+  }
+});
 function openLiveScreen(){if(!quiz.id){alert("पहले Quiz Code generate करके Save Quiz करें।");return null}try{sessionStorage.setItem("ncAdminReviewReturn","1")}catch(e){}location.href="index.html?host=1&code="+encodeURIComponent(quiz.id);return null}
 $("openLiveScreen").onclick=()=>openLiveScreen();
 $("start").onclick=async()=>{const sec=Number($("questionSeconds").value),limit=Number($("questionLimit").value),delay=Number($("startDelay").value);if(!quiz.id){alert("पहले Quiz Code generate करके Save Quiz करें।");return}if(!Number.isFinite(sec)||sec<5||sec>600){alert("हर प्रश्न का समय 5 से 600 सेकंड के बीच रखें।");return}if(!Number.isInteger(limit)||limit<1){alert("Question limit कम से कम 1 होना चाहिए।");return}lastStartError="";await restoreRemoteQuestionBank();watchPlayers();if(!bankQuestions.length){alert("Question Bank खाली है। JSON से प्रश्न import करें या प्रश्न जोड़ें।");return}stopTimers();quiz.status="waiting";quiz.endAt=0;quiz.settings={...(quiz.settings||{}),questionSeconds:sec,questionLimit:limit,startDelay:delay};const questionBank=[...bankQuestions];const selectedQuestions=shuffle(questionBank).slice(0,Math.min(limit,questionBank.length));if(selectedQuestions.length<limit){alert("ध्यान दें: आपने "+limit+" प्रश्न चुने हैं, लेकिन अभी उपलब्ध Question Bank में केवल "+selectedQuestions.length+" प्रश्न मिले। प्रश्न सूची के ऊपर कुल संख्या जाँचें और जरूरत हो तो पूरा JSON फिर से Import करें।");}questions=selectedQuestions;current=0;players=read().players||[];$("liveStatus").textContent="Question Bank: "+bankQuestions.length+" • इस Quiz में चुने गए: "+questions.length;render();await beginLive();if(!lastStartError)alert(delay>0?"Questions sync होने के बाद "+delay+" सेकंड का countdown Admin और Player दोनों पर चलेगा।":"Questions sync होने के बाद Quiz शुरू होगा।");};
