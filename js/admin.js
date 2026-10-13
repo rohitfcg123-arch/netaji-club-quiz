@@ -4,6 +4,8 @@ import { listenForDefaultBranding } from "./branding.js?v=20261013-branding-2";
 import { collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, serverTimestamp, setDoc, Timestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 const $=id=>document.getElementById(id),KEY="netajiQuizLiveState";
 let questions=[],bankQuestions=[],current=0,quiz={id:"",name:"Saraswati Puja Quiz",status:"waiting",settings:{pointsPerCorrect:10,questionSeconds:10,questionLimit:100,startDelay:0},questions:[]},players=[],autoTimer=null,countdownTimer=null;
+// Run fencing: stale Admin tabs must not overwrite a newer run or end a live quiz.
+let allowRunTakeoverOnce=false, allowExplicitCompletion=false;
 const languageNames={hi:"हिंदी",en:"English",bn:"বাংলা"};
 
 let adminAudioContext = null;
@@ -75,8 +77,30 @@ function persist(){
   if(!quiz.id)return Promise.resolve();
   const code=String(quiz.id).trim().toUpperCase();
   const quizDoc={id:code,name:quiz.name||"Quiz",status:quiz.status||"waiting",settings:quiz.settings||{questionSeconds:10,questionLimit:100,startDelay:0},currentIndex:current,runId:quiz.runId||"",startAt:Number(quiz.startAt||0),questionStartedAt:Number(quiz.questionStartedAt||0),endAt:Number(quiz.endAt||0),startedAt:quiz.startedAt instanceof Timestamp?quiz.startedAt:(quiz.startAt?Timestamp.fromMillis(Number(quiz.startAt)):null),lead:Number(quiz.settings?.startDelay||0),sec:Number(quiz.settings?.questionSeconds||10),count:questions.length,updatedAt:serverTimestamp()};
-  // Recover a failed write queue before scheduling the next update.
-  const queuedWrite=syncChain.catch(()=>undefined).then(()=>setDoc(doc(db,"quizzes",code),quizDoc,{merge:true})).then(()=>setDoc(doc(db,"quizzes",code,"publicReview","summary"),{status:quizDoc.status,currentIndex:quizDoc.currentIndex,startAt:quizDoc.startAt,questionStartedAt:quizDoc.questionStartedAt,questionSeconds:Number(quizDoc.settings?.questionSeconds||10),total:quizDoc.count,updatedAt:serverTimestamp()},{merge:true}));
+  // Serialize writes and fence stale tabs against the authoritative Firestore run.
+  const queuedWrite=syncChain.catch(()=>undefined).then(async()=>{
+    const quizRef=doc(db,"quizzes",code);
+    const remoteSnap=await getDoc(quizRef);
+    const remote=remoteSnap.exists()?remoteSnap.data():null;
+    const remoteRun=String(remote?.runId||"");
+    const localRun=String(quizDoc.runId||"");
+    if(remote && remoteRun && localRun && remoteRun!==localRun && !allowRunTakeoverOnce){
+      const msg="यह Admin tab पुराने Quiz Run का है। नए Run को overwrite करने से बचाया गया है। Active Admin tab ही इस्तेमाल करें।";
+      console.warn(msg,{remoteRun,localRun,code});
+      const el=$("liveStatus");if(el)el.textContent="⚠️ "+msg;
+      throw new Error(msg);
+    }
+    if(remote && remote.status==="live" && quizDoc.status==="completed" && !allowExplicitCompletion){
+      const msg="Stale Admin tab से Quiz को completed करने वाला update रोका गया; Firestore में live status सुरक्षित है।";
+      console.warn(msg,{code,remoteRun,localRun});
+      const el=$("liveStatus");if(el)el.textContent="⚠️ "+msg;
+      throw new Error(msg);
+    }
+    await setDoc(quizRef,quizDoc,{merge:true});
+    if(allowRunTakeoverOnce && remoteRun!==localRun) allowRunTakeoverOnce=false;
+    if(allowExplicitCompletion && quizDoc.status==="completed") allowExplicitCompletion=false;
+    await setDoc(doc(db,"quizzes",code,"publicReview","summary"),{status:quizDoc.status,currentIndex:quizDoc.currentIndex,startAt:quizDoc.startAt,questionStartedAt:quizDoc.questionStartedAt,questionSeconds:Number(quizDoc.settings?.questionSeconds||10),total:quizDoc.count,updatedAt:serverTimestamp()},{merge:true});
+  });
   syncChain=queuedWrite;
   queuedWrite.catch(e=>{console.error("Firestore quiz sync failed",e);const el=$("quizStatus");if(el)el.textContent="Firebase sync error: "+(e.message||"Rules/connection जाँचें")});
   return queuedWrite;
@@ -271,7 +295,8 @@ $("importJson").addEventListener("click",importJson);
 $("jsonFile").addEventListener("change",e=>{const file=e.target.files&&e.target.files[0];if(file)$("importStatus").textContent="फ़ाइल चुनी गई: "+file.name+" ("+Math.round(file.size/1024)+" KB)। अब Import JSON Questions दबाएँ।"});
 $("downloadSample").onclick=()=>{const sample={exam:"Sample Quiz",questions:[{q:"भारत की राजधानी क्या है?",options:["दिल्ली","मुंबई","कोलकाता","चेन्नई"],answer:"A"}]};const a=document.createElement("a"),url=URL.createObjectURL(new Blob([JSON.stringify(sample,null,2)],{type:"application/json"}));a.href=url;a.download="netaji-quiz-sample.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
 $("generate").onclick=()=>{$("quizCode").value="NC"+Math.random().toString(36).slice(2,8).toUpperCase()};
-$("quizForm").onsubmit=e=>{e.preventDefault();const newCode=$("quizCode").value.trim().toUpperCase();if(!newCode){alert("Quiz Code generate करें।");return}const codeChanged=newCode!==quiz.id;quiz.id=newCode;quiz.name=$("quizName").value.trim();quiz.status="waiting";quiz.startAt=0;quiz.startedAt=null;quiz.questionStartedAt=0;quiz.endAt=0;quiz.runId=crypto.randomUUID();current=0;stopTimers();save();persist();watchPlayers();$("liveStatus").textContent="Quiz तैयार है। Start Quiz दबाकर शुरू करें।";alert("Quiz saved. Code: "+quiz.id+" — Status reset to waiting.")};
+$("quizForm").onsubmit=e=>{e.preventDefault();const newCode=$("quizCode").value.trim().toUpperCase();if(!newCode){alert("Quiz Code generate करें।");return}const codeChanged=newCode!==quiz.id;quiz.id=newCode;quiz.name=$("quizName").value.trim();quiz.status="waiting";quiz.startAt=0;quiz.startedAt=null;quiz.questionStartedAt=0;quiz.endAt=0;quiz.runId=crypto.randomUUID();
+  allowRunTakeoverOnce=true;current=0;stopTimers();save();persist();watchPlayers();$("liveStatus").textContent="Quiz तैयार है। Start Quiz दबाकर शुरू करें।";alert("Quiz saved. Code: "+quiz.id+" — Status reset to waiting.")};
 $("questionForm").onsubmit=e=>{e.preventDefault();bankQuestions.push({question:$("qText").value.trim(),options:[$("a").value.trim(),$("b").value.trim(),$("c").value.trim(),$("d").value.trim()],correctIndex:+$("correct").value,category:selectedSingleCategory()});questions=bankQuestions;e.target.reset();save()};
 function stopTimers(){if(autoTimer)clearInterval(autoTimer);if(countdownTimer)clearInterval(countdownTimer);autoTimer=countdownTimer=null}
 async function beginLive(){
@@ -423,7 +448,7 @@ function openLiveScreen(){if(!quiz.id){alert("पहले Quiz Code generate �
 $("openLiveScreen").onclick=()=>openLiveScreen();
 $("start").onclick=async()=>{const sec=Number($("questionSeconds").value),limit=Number($("questionLimit").value),delay=Number($("startDelay").value);if(!quiz.id){alert("पहले Quiz Code generate करके Save Quiz करें।");return}if(!Number.isFinite(sec)||sec<5||sec>600){alert("हर प्रश्न का समय 5 से 600 सेकंड के बीच रखें।");return}if(!Number.isInteger(limit)||limit<1){alert("Question limit कम से कम 1 होना चाहिए।");return}await restoreRemoteQuestionBank();watchPlayers();if(!bankQuestions.length){alert("Question Bank खाली है। JSON से प्रश्न import करें या प्रश्न जोड़ें।");return}stopTimers();quiz.status="waiting";quiz.endAt=0;quiz.settings={...(quiz.settings||{}),questionSeconds:sec,questionLimit:limit,startDelay:delay};const questionBank=[...bankQuestions];const selectedQuestions=shuffle(questionBank).slice(0,Math.min(limit,questionBank.length));if(selectedQuestions.length<limit){alert("ध्यान दें: आपने "+limit+" प्रश्न चुने हैं, लेकिन अभी उपलब्ध Question Bank में केवल "+selectedQuestions.length+" प्रश्न मिले। प्रश्न सूची के ऊपर कुल संख्या जाँचें और जरूरत हो तो पूरा JSON फिर से Import करें।");}questions=selectedQuestions;current=0;players=read().players||[];$("liveStatus").textContent="Question Bank: "+bankQuestions.length+" • इस Quiz में चुने गए: "+questions.length;render();beginLive();alert(delay>0?"Questions sync होने के बाद "+delay+" सेकंड का countdown Admin और Player दोनों पर चलेगा।":"Questions sync होने के बाद Quiz शुरू होगा।")};
 $("next").onclick=async()=>{if(quiz.status!=="live")return;if(current<questions.length-1){await advanceQuestion(current+1)}else $("end").click()};
-$("end").onclick=async()=>{stopTimers();quiz.status="completed";quiz.endAt=Date.now();await persist();render();$("liveStatus").textContent="Quiz समाप्त हो गया है। Results तैयार हो रहे हैं…";await loadResults()};
+$("end").onclick=async()=>{stopTimers();allowExplicitCompletion=true;quiz.status="completed";quiz.endAt=Date.now();await persist();render();$("liveStatus").textContent="Quiz समाप्त हो गया है। Results तैयार हो रहे हैं…";await loadResults()};
 async function loadResults(){
   const code=String(quiz.id||"").trim().toUpperCase();
   if(!code)return;
