@@ -103,6 +103,12 @@ service cloud.firestore {
       allow list: if isAdmin();
       allow create, update, delete: if isAdmin();
 
+      // Public sanitized summary used only by the no-login Review screen.
+      match /publicReview/{summaryId} {
+        allow get, list: if summaryId == 'summary';
+        allow create, update, delete: if isAdmin();
+      }
+
       // -------------------------
       // Questions
       // -------------------------
