@@ -68,6 +68,7 @@ const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"{}")}catch{ret
 let syncChain=Promise.resolve();
 let advancingQuestion=false;
 let unsubPlayers=null, watchedPlayerCode="";
+let reviewUnsubs=[];
 function persist(){
   const s=read();s.quiz={...quiz,questions,currentIndex:current};s.questions=bankQuestions;s.questionBank=bankQuestions;s.players=players;
   try{localStorage.setItem(KEY,JSON.stringify(s))}catch(e){console.warn("Local cache unavailable",e)}
@@ -75,7 +76,7 @@ function persist(){
   const code=String(quiz.id).trim().toUpperCase();
   const quizDoc={id:code,name:quiz.name||"Quiz",status:quiz.status||"waiting",settings:quiz.settings||{questionSeconds:10,questionLimit:100,startDelay:0},currentIndex:current,runId:quiz.runId||"",startAt:Number(quiz.startAt||0),questionStartedAt:Number(quiz.questionStartedAt||0),endAt:Number(quiz.endAt||0),startedAt:quiz.startedAt instanceof Timestamp?quiz.startedAt:(quiz.startAt?Timestamp.fromMillis(Number(quiz.startAt)):null),lead:Number(quiz.settings?.startDelay||0),sec:Number(quiz.settings?.questionSeconds||10),count:questions.length,updatedAt:serverTimestamp()};
   // Recover a failed write queue before scheduling the next update.
-  const queuedWrite=syncChain.catch(()=>undefined).then(()=>setDoc(doc(db,"quizzes",code),quizDoc,{merge:true}));
+  const queuedWrite=syncChain.catch(()=>undefined).then(()=>setDoc(doc(db,"quizzes",code),quizDoc,{merge:true})).then(()=>setDoc(doc(db,"quizzes",code,"publicReview","summary"),{status:quizDoc.status,currentIndex:quizDoc.currentIndex,startAt:quizDoc.startAt,questionStartedAt:quizDoc.questionStartedAt,questionSeconds:Number(quizDoc.settings?.questionSeconds||10),total:quizDoc.count,updatedAt:serverTimestamp()},{merge:true}));
   syncChain=queuedWrite;
   queuedWrite.catch(e=>{console.error("Firestore quiz sync failed",e);const el=$("quizStatus");if(el)el.textContent="Firebase sync error: "+(e.message||"Rules/connection जाँचें")});
   return queuedWrite;
@@ -160,22 +161,45 @@ function watchPlayers(){
   if(!code)return;
   if(watchedPlayerCode===code&&unsubPlayers)return;
   if(unsubPlayers){unsubPlayers();unsubPlayers=null;}
+  reviewUnsubs.forEach(fn=>fn()); reviewUnsubs=[];
   watchedPlayerCode=code;
+  let reviewPlayers=[], reviewAnswers=[], reviewKeys=new Map();
+  const publishPublicReview=async()=>{
+    try{
+      const total=Math.max(0,Number(quiz.count||questions.length||0));
+      const points=Number(quiz.settings?.pointsPerCorrect||10);
+      const rows=reviewPlayers.map(p=>{
+        const mine=reviewAnswers.filter(a=>a.uid===p.uid);
+        const correct=mine.filter(a=>reviewKeys.has(String(a.q))&&reviewKeys.get(String(a.q))===Number(a.sel)).length;
+        return {id:String(p.uid),name:String(p.name||"Participant").slice(0,40),score:correct*points,correct,answered:mine.length};
+      }).sort((a,b)=>b.correct-a.correct||a.name.localeCompare(b.name));
+      await setDoc(doc(db,"quizzes",code,"publicReview","summary"),{
+        leaderboard:rows.slice(0,50),total:Number(quiz.count||questions.length||0),
+        status:String(quiz.status||"waiting"),currentIndex:Number(current||0),
+        questionStartedAt:Number(quiz.questionStartedAt||0),startAt:Number(quiz.startAt||0),
+        questionSeconds:Number(quiz.settings?.questionSeconds||10),updatedAt:serverTimestamp()
+      },{merge:true});
+    }catch(e){console.error("Public Review summary publish failed",e)}
+  };
   unsubPlayers=onSnapshot(collection(db,"quizzes",code,"players"),snap=>{
     const previous=new Map(players.map(p=>[String(p.uid||p.id||""),p]));
-    players=snap.docs.map(d=>{
-      const old=previous.get(d.id)||{};
-      return {...old,...d.data(),uid:d.id,score:Number(old.score||0)};
-    });
+    players=snap.docs.map(d=>{const old=previous.get(d.id)||{};return {...old,...d.data(),uid:d.id,score:Number(old.score||0)}});
+    reviewPlayers=players.map(p=>({uid:p.uid,name:p.name||"Participant"}));
     const state=read();state.players=players;
     try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){console.warn("Could not cache player list",e)}
-    render();
+    render(); void publishPublicReview();
   },error=>{
     console.error("Live participant sync failed",error);
-    const status=$("liveStatus");
-    if(status)status.textContent="Participant sync error: "+(error.message||"Firebase Rules जाँचें।");
+    const status=$("liveStatus");if(status)status.textContent="Participant sync error: "+(error.message||"Firebase Rules जाँचें।");
   });
+  reviewUnsubs.push(onSnapshot(collection(db,"quizzes",code,"answers"),snap=>{
+    reviewAnswers=snap.docs.map(d=>({id:d.id,...d.data()})); void publishPublicReview();
+  },error=>console.error("Live answers sync failed",error)));
+  reviewUnsubs.push(onSnapshot(collection(db,"quizzes",code,"keys"),snap=>{
+    reviewKeys=new Map(snap.docs.map(d=>[d.id,Number(d.data().correctIndex)])); void publishPublicReview();
+  },error=>console.error("Live answer keys sync failed",error)));
 }
+
 function render(){
  refreshCategoryFilter();
  const visible=visibleQuestionIndexes();
