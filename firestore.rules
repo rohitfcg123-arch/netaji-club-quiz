@@ -238,14 +238,24 @@ service cloud.firestore {
     // Only an authenticated, allowlisted password Admin can write it.
     // -------------------------
     match /siteSettings/{settingId} {
-      allow get: if settingId == 'branding';
+      allow get: if settingId in ['branding', 'registrationConfig'];
       allow list: if false;
       allow create, update: if settingId in ['branding', 'registrationConfig']
         && isAdmin()
-        && request.resource.data.keys().hasOnly([
-          'preset', 'colors', 'text', 'assets', 'effects', 'updatedAt'
-        ]);
-      allow delete: if settingId == 'branding' && isAdmin();
+        && (
+          (settingId == 'branding'
+            && request.resource.data.keys().hasOnly(['preset', 'colors', 'text', 'assets', 'effects', 'updatedAt']))
+          || (settingId == 'registrationConfig'
+            && request.resource.data.keys().hasOnly(['title', 'feeInr', 'upiId', 'updatedAt', 'updatedBy'])
+            && request.resource.data.title is string
+            && request.resource.data.title.size() > 0
+            && request.resource.data.title.size() <= 120
+            && request.resource.data.feeInr is number
+            && request.resource.data.feeInr > 0
+            && request.resource.data.upiId is string
+            && request.resource.data.upiId.size() > 2)
+        );
+      allow delete: if settingId in ['branding', 'registrationConfig'] && isAdmin();
     }
 
     // Deny everything not explicitly allowed above.
