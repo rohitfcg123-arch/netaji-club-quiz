@@ -334,6 +334,10 @@ async function beginLive(){
   quiz.count=questions.length;
   current=0;
   quiz.runId=crypto.randomUUID();
+  // A deliberate Start Quiz action creates a new run for this code. Permit this
+  // one intentional run takeover so the stale-run fence does not reject its first
+  // Firebase write against the previous runId.
+  allowRunTakeoverOnce=true;
   $("liveStatus").textContent="⏳ पहले "+questions.length+" questions Firebase पर sync हो रहे हैं…";
   $("adminTimer").textContent="Preparing…";
   render();
