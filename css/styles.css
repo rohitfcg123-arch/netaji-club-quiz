@@ -398,3 +398,52 @@ body.host-mode.brand-animations-on .host-rank-card{animation:themeRankEntrance .
 /* Readable status chips: yellow status backgrounds must use dark text. */
 .badge,.status-badge,.quiz-status,.status-chip,[data-quiz-status]{color:#552d22!important;}
 .badge[ data-status="completed"],.status-badge[data-status="completed"],.quiz-status[data-status="completed"],.status-chip[data-status="completed"]{background:#ffedbd!important;color:#552d22!important;border:1px solid #d9b75c;}
+
+
+/* Update #3 — force readable text in every language and all leaderboard ranks. */
+body.host-mode.brand-themed .host-lang-tag,
+body.host-mode.brand-themed .host-lang h2,
+body.host-mode.brand-themed .host-option,
+body.host-mode.brand-themed .host-option span,
+body.host-mode.brand-themed .host-option strong,
+body.host-mode.brand-themed .host-option-en,
+body.host-mode.brand-themed .host-option-hi,
+body.host-mode.brand-themed .host-option-bn {
+  -webkit-text-fill-color: currentColor !important;
+}
+body.host-mode.brand-themed .host-lang h2,
+body.host-mode.brand-themed .host-lang-hi h2,
+body.host-mode.brand-themed .host-lang-bn h2 {
+  color: #fff4e5 !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,.45) !important;
+}
+body.host-mode.brand-themed .host-lang-tag {
+  background: #fff4e5 !important;
+  color: #263447 !important;
+}
+body.host-mode.brand-themed .host-lang-hi .host-lang-tag,
+body.host-mode.brand-themed .host-lang-bn .host-lang-tag {
+  background: #fff4e5 !important;
+  color: #263447 !important;
+}
+body.host-mode.brand-themed .host-option-en,
+body.host-mode.brand-themed .host-option-hi,
+body.host-mode.brand-themed .host-option-bn {
+  color: #fff !important;
+}
+body.host-mode.brand-themed .host-ranking-panel,
+body.host-mode.brand-themed .host-rank-card,
+body.host-mode.brand-themed .host-player-name,
+body.host-mode.brand-themed .host-player-score,
+body.host-mode.brand-themed .host-player-detail,
+body.host-mode.brand-themed .host-rank-number {
+  color: #fff4e5 !important;
+}
+body.host-mode.brand-themed .host-rank-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+body.host-mode.brand-themed .host-rank-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
