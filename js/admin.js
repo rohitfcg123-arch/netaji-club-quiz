@@ -549,7 +549,53 @@ listenForDefaultBranding((branding, error) => {
 setInterval(()=>{updateLiveOnly();if(quiz.status==="live"){$("liveStatus").textContent="🟢 QUIZ LIVE — शुरू हो चुका है • प्रश्न "+Math.min(current+1,questions.length)+" / "+questions.length+" • चलने का समय "+formatElapsed(Date.now()-Number(quiz.startAt||Date.now()));}},500);
 
 
-/* Root-admin Google email approvals. Firestore Rules enforce root-only writes. */
+
+/* Registration-page public settings. */
+const registrationSettingsForm = $("registrationSettingsForm");
+const registrationSettingsStatus = $("registrationSettingsStatus");
+const registrationTitleInput = $("registrationTitleInput");
+const registrationFeeInput = $("registrationFeeInput");
+const registrationUpiInput = $("registrationUpiInput");
+const registrationSettingsRef = doc(db, "siteSettings", "registrationConfig");
+function showRegistrationSettingsStatus(message, error = false) {
+  if (!registrationSettingsStatus) return;
+  registrationSettingsStatus.textContent = message;
+  registrationSettingsStatus.className = "notice" + (error ? " error" : " success");
+}
+onSnapshot(registrationSettingsRef, snapshot => {
+  const data = snapshot.exists() ? snapshot.data() : {};
+  if (registrationTitleInput && !registrationTitleInput.dataset.edited) registrationTitleInput.value = String(data.title || "Saraswati Puja Quiz 2027");
+  if (registrationFeeInput && !registrationFeeInput.dataset.edited) registrationFeeInput.value = data.feeInr ? String(data.feeInr) : "";
+  if (registrationUpiInput && !registrationUpiInput.dataset.edited) registrationUpiInput.value = String(data.upiId || "");
+  showRegistrationSettingsStatus(snapshot.exists() ? "Saved registration settings load ho gayi." : "Abhi settings save nahi hui hain. Name, fee aur UPI ID bhar kar Save karein.");
+}, error => {
+  console.error("Registration settings load failed:", error);
+  showRegistrationSettingsStatus("Settings load nahi hui: " + (error.message || "Firestore Rules check karein."), true);
+});
+for (const field of [registrationTitleInput, registrationFeeInput, registrationUpiInput]) {
+  field?.addEventListener("input", () => { field.dataset.edited = "true"; });
+}
+registrationSettingsForm?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const title = String(registrationTitleInput?.value || "").trim();
+  const feeInr = Number(registrationFeeInput?.value);
+  const upiId = String(registrationUpiInput?.value || "").trim();
+  if (!title || title.length > 120 || !Number.isFinite(feeInr) || feeInr <= 0 || !upiId || !/^[A-Za-z0-9._-]+@[A-Za-z0-9.-]+$/.test(upiId)) {
+    showRegistrationSettingsStatus("Quiz/contest name, valid fee aur valid UPI ID (example: clubname@upi) enter karein.", true);
+    return;
+  }
+  const button = $("saveRegistrationSettings");
+  if (button) button.disabled = true;
+  try {
+    await setDoc(registrationSettingsRef, { title, feeInr, upiId, updatedAt: serverTimestamp(), updatedBy: String(auth.currentUser?.email || "") }, { merge: true });
+    for (const field of [registrationTitleInput, registrationFeeInput, registrationUpiInput]) if (field) delete field.dataset.edited;
+    showRegistrationSettingsStatus("✅ Registration settings save ho gayi. Public registration page par auto-update hogi.");
+  } catch (error) {
+    console.error("Registration settings save failed:", error);
+    showRegistrationSettingsStatus("Save nahi hua: " + (error.message || "Firestore Rules publish karein aur Admin login check karein."), true);
+  } finally { if (button) button.disabled = false; }
+});
+\n/* Root-admin Google email approvals. Firestore Rules enforce root-only writes. */
 const ROOT_ADMIN_EMAIL = "rohit.fcg123@gmail.com";
 const approvalSection = $("adminApprovalSection");
 const approvalForm = $("adminApprovalForm");
