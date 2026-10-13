@@ -556,6 +556,7 @@ const registrationSettingsStatus = $("registrationSettingsStatus");
 const registrationTitleInput = $("registrationTitleInput");
 const registrationFeeInput = $("registrationFeeInput");
 const registrationUpiInput = $("registrationUpiInput");
+const registrationEmailInput = $("registrationEmailInput");
 const registrationSettingsRef = doc(db, "siteSettings", "registrationConfig");
 function showRegistrationSettingsStatus(message, error = false) {
   if (!registrationSettingsStatus) return;
@@ -567,12 +568,13 @@ onSnapshot(registrationSettingsRef, snapshot => {
   if (registrationTitleInput && !registrationTitleInput.dataset.edited) registrationTitleInput.value = String(data.title || "Saraswati Puja Quiz 2027");
   if (registrationFeeInput && !registrationFeeInput.dataset.edited) registrationFeeInput.value = data.feeInr ? String(data.feeInr) : "";
   if (registrationUpiInput && !registrationUpiInput.dataset.edited) registrationUpiInput.value = String(data.upiId || "");
+  if (registrationEmailInput && !registrationEmailInput.dataset.edited) registrationEmailInput.value = String(data.adminEmail || "netajiswt@gmail.com");
   showRegistrationSettingsStatus(snapshot.exists() ? "Saved registration settings load ho gayi." : "Abhi settings save nahi hui hain. Name, fee aur UPI ID bhar kar Save karein.");
 }, error => {
   console.error("Registration settings load failed:", error);
   showRegistrationSettingsStatus("Settings load nahi hui: " + (error.message || "Firestore Rules check karein."), true);
 });
-for (const field of [registrationTitleInput, registrationFeeInput, registrationUpiInput]) {
+for (const field of [registrationTitleInput, registrationFeeInput, registrationUpiInput, registrationEmailInput]) {
   field?.addEventListener("input", () => { field.dataset.edited = "true"; });
 }
 registrationSettingsForm?.addEventListener("submit", async event => {
@@ -580,14 +582,15 @@ registrationSettingsForm?.addEventListener("submit", async event => {
   const title = String(registrationTitleInput?.value || "").trim();
   const feeInr = Number(registrationFeeInput?.value);
   const upiId = String(registrationUpiInput?.value || "").trim();
-  if (!title || title.length > 120 || !Number.isFinite(feeInr) || feeInr <= 0 || !upiId || !/^[A-Za-z0-9._-]+@[A-Za-z0-9.-]+$/.test(upiId)) {
-    showRegistrationSettingsStatus("Quiz/contest name, valid fee aur valid UPI ID (example: clubname@upi) enter karein.", true);
+  const adminEmail = String(registrationEmailInput?.value || "").trim().toLowerCase();
+  if (!title || title.length > 120 || !Number.isFinite(feeInr) || feeInr <= 0 || !upiId || !/^[A-Za-z0-9._-]+@[A-Za-z0-9.-]+$/.test(upiId) || !adminEmail.includes("@") || !adminEmail.includes(".")) {
+    showRegistrationSettingsStatus("Quiz/contest name, valid fee, UPI ID aur registration email enter karein.", true);
     return;
   }
   const button = $("saveRegistrationSettings");
   if (button) button.disabled = true;
   try {
-    await setDoc(registrationSettingsRef, { title, feeInr, upiId, updatedAt: serverTimestamp(), updatedBy: String(auth.currentUser?.email || "") }, { merge: true });
+    await setDoc(registrationSettingsRef, { title, feeInr, upiId, adminEmail, updatedAt: serverTimestamp(), updatedBy: String(auth.currentUser?.email || "") }, { merge: true });
     for (const field of [registrationTitleInput, registrationFeeInput, registrationUpiInput]) if (field) delete field.dataset.edited;
     showRegistrationSettingsStatus("✅ Registration settings save ho gayi. Public registration page par auto-update hogi.");
   } catch (error) {
