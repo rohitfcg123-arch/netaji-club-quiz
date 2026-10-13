@@ -598,7 +598,8 @@ registrationSettingsForm?.addEventListener("submit", async event => {
     showRegistrationSettingsStatus("Save nahi hua: " + (error.message || "Firestore Rules publish karein aur Admin login check karein."), true);
   } finally { if (button) button.disabled = false; }
 });
-\n/* Root-admin Google email approvals. Firestore Rules enforce root-only writes. */
+
+/* Root-admin Google email approvals. Firestore Rules enforce root-only writes. */
 const ROOT_ADMIN_EMAIL = "rohit.fcg123@gmail.com";
 const approvalSection = $("adminApprovalSection");
 const approvalForm = $("adminApprovalForm");
