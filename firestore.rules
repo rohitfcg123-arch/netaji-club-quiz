@@ -240,7 +240,7 @@ service cloud.firestore {
     match /siteSettings/{settingId} {
       allow get: if settingId == 'branding';
       allow list: if false;
-      allow create, update: if settingId == 'branding'
+      allow create, update: if settingId in ['branding', 'registrationConfig']
         && isAdmin()
         && request.resource.data.keys().hasOnly([
           'preset', 'colors', 'text', 'assets', 'effects', 'updatedAt'
