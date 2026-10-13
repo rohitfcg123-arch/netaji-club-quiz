@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#fff4d8">
+<title>Quiz Registration | Netaji Club</title>
+<link rel="stylesheet" href="css/styles.css?v=20261013-registration-1">
+<style>
+.registration-card{max-width:720px;margin:28px auto}
+.registration-card h2{color:#862127;font-size:clamp(28px,5vw,40px);margin:8px 0}
+.registration-form{display:grid;gap:8px;margin-top:22px}
+.registration-form label{font-weight:750;margin-top:8px}
+.registration-form input,.registration-form select,.registration-form textarea{width:100%;padding:14px 15px;border:1px solid #d9cba8;border-radius:12px;background:#fff;font:inherit;color:#292929}
+.registration-form input:focus,.registration-form select:focus{outline:2px solid #a87a24;outline-offset:1px}
+.registration-actions{display:grid;gap:12px;margin-top:18px}
+.registration-actions button,.registration-actions a{display:block;text-align:center;text-decoration:none;width:100%;padding:14px 18px;border-radius:12px;font:inherit;font-weight:800}
+.secondary-action{border:1px solid #d9cba8;background:#fff8e8;color:#68351e}
+.help-note{font-size:14px;line-height:1.55;color:#795438}
+.required{color:#a31e28}
+@media(min-width:600px){.registration-form{grid-template-columns:1fr 1fr;column-gap:16px}.registration-form .full{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand" data-brand-logo data-brand-logo-fallback="NC">NC</div>
+  <div><small data-brand-text="competitionLabel">Organized by</small><h1 data-brand-text="clubName">नेताजी क्लब</h1><p data-brand-text="tagline">ज्ञान • संस्कृति • एकता</p></div>
+  <a class="link" href="index.html">Quiz Home</a>
+</header>
+<main>
+  <section class="card registration-card">
+    <p class="eyebrow">NETAJI CLUB • QUIZ REGISTRATION</p>
+    <h2>Register for a Quiz</h2>
+    <p>Fill in your details below. After payment, enter the UPI reference number and submit your registration by email to the club.</p>
+    <div class="notice" id="setupNotice" role="status">Payment setup is not complete yet. The club UPI ID and registration fee must be configured before accepting registrations.</div>
+    <form id="registrationForm" class="registration-form">
+      <label for="fullName">Contestant Full Name <span class="required">*</span></label>
+      <input id="fullName" name="fullName" maxlength="80" autocomplete="name" required placeholder="Enter your full name">
+      <label for="email">Email ID <span class="required">*</span></label>
+      <input id="email" name="email" type="email" maxlength="120" autocomplete="email" required placeholder="you@example.com">
+      <label for="quizName" class="full">Quiz / Contest <span class="required">*</span></label>
+      <input id="quizName" name="quizName" class="full" maxlength="120" required placeholder="Enter the quiz name">
+      <label for="fee">Registration Fee (₹)</label>
+      <input id="fee" name="fee" type="text" readonly value="To be announced">
+      <label for="utr">UPI Reference Number / UTR <span class="required">*</span></label>
+      <input id="utr" name="utr" maxlength="80" required placeholder="Enter UTR after payment">
+      <label for="paidAmount">Amount Paid (₹) <span class="required">*</span></label>
+      <input id="paidAmount" name="paidAmount" type="number" min="1" step="0.01" required placeholder="Enter amount paid">
+      <label for="paymentDate">Payment Date</label>
+      <input id="paymentDate" name="paymentDate" type="date">
+      <label for="screenshotNote" class="full">Payment note (optional)</label>
+      <input id="screenshotNote" name="screenshotNote" class="full" maxlength="250" placeholder="Optional note (no screenshot upload in this email-only version)">
+      <div class="registration-actions full">
+        <button class="primary" id="payButton" type="button">Pay Now using UPI</button>
+        <button class="secondary-action" type="submit">Submit Registration by Email</button>
+      </div>
+    </form>
+    <p id="formNotice" class="notice" aria-live="polite" style="margin-top:16px">No account or Google login is required. Check your details before opening your email app.</p>
+    <p class="help-note">The Pay Now button opens a UPI app when a valid UPI ID and fee are configured. After paying, return here and enter the UTR. Submitting opens your email app with the registration details filled in; you must press Send. The club will verify the payment manually. This page does not store entries in Firebase or any database.</p>
+  </section>
+</main>
+<script>
+/* CLUB SETUP: replace the UPI ID and fee below before publishing registration publicly. */
+const CLUB_UPI_ID = "REPLACE_WITH_CLUB_UPI_ID";
+const CLUB_PAYEE_NAME = "Netaji Club";
+const REGISTRATION_FEE_INR = 0; // Set the fixed fee for this registration page.
+const ADMIN_EMAIL = "netajiswt@gmail.com";
+
+const form = document.getElementById("registrationForm");
+const feeField = document.getElementById("fee");
+const amountField = document.getElementById("paidAmount");
+const setupNotice = document.getElementById("setupNotice");
+const formNotice = document.getElementById("formNotice");
+const payButton = document.getElementById("payButton");
+
+if (Number.isFinite(REGISTRATION_FEE_INR) && REGISTRATION_FEE_INR > 0) {
+  feeField.value = "₹" + REGISTRATION_FEE_INR.toFixed(2);
+  amountField.value = REGISTRATION_FEE_INR.toFixed(2);
+  amountField.readOnly = true;
+}
+const paymentConfigured = CLUB_UPI_ID && !CLUB_UPI_ID.startsWith("REPLACE_") && Number.isFinite(REGISTRATION_FEE_INR) && REGISTRATION_FEE_INR > 0;
+if (paymentConfigured) {
+  setupNotice.textContent = "Registration is open. Pay the exact fee shown, then return and submit your UTR.";
+  setupNotice.style.background = "#e1f5e7";
+} else {
+  payButton.disabled = true;
+  payButton.title = "The club UPI ID and fixed registration fee must be configured first.";
+}
+payButton.addEventListener("click", () => {
+  if (!paymentConfigured) {
+    formNotice.textContent = "UPI payment is not configured yet. The club must add its UPI ID and fixed fee before this button can open a payment app.";
+    return;
+  }
+  const name = document.getElementById("fullName").value.trim();
+  if (!name) {
+    formNotice.textContent = "Please enter your full name first.";
+    document.getElementById("fullName").focus();
+    return;
+  }
+  const params = new URLSearchParams({
+    pa: CLUB_UPI_ID,
+    pn: CLUB_PAYEE_NAME,
+    am: REGISTRATION_FEE_INR.toFixed(2),
+    cu: "INR",
+    tn: "Netaji Club Quiz Registration - " + name
+  });
+  window.location.href = "upi://pay?" + params.toString();
+});
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (!form.reportValidity()) return;
+  const data = new FormData(form);
+  const fullName = String(data.get("fullName")).trim();
+  const email = String(data.get("email")).trim();
+  const quizName = String(data.get("quizName")).trim();
+  const utr = String(data.get("utr")).trim();
+  const paidAmount = String(data.get("paidAmount")).trim();
+  const paymentDate = String(data.get("paymentDate") || "").trim() || "Not provided";
+  const note = String(data.get("screenshotNote") || "").trim() || "None";
+  const registrationDate = new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+  const subject = "Netaji Club Quiz - Registration & Payment Details - " + fullName;
+  const body = [
+    "NETAJI CLUB QUIZ — REGISTRATION & PAYMENT DETAILS",
+    "",
+    "Contestant Name: " + fullName,
+    "Email ID: " + email,
+    "Quiz / Contest: " + quizName,
+    "Registration Fee: " + feeField.value,
+    "Amount Paid: ₹" + paidAmount,
+    "UPI Reference Number / UTR: " + utr,
+    "Payment Date: " + paymentDate,
+    "Additional Note: " + note,
+    "Registration Submitted On: " + registrationDate,
+    "",
+    "Please verify the payment manually and confirm my registration.",
+    "",
+    "Note: This email is a registration request and is not proof that payment has been verified."
+  ].join("\n");
+  formNotice.textContent = "Your email app should open with all details filled in. Review the message and press Send to submit your registration.";
+  window.location.href = "mailto:" + encodeURIComponent(ADMIN_EMAIL) + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+});
+</script>
+<script type="module" src="js/brand.js"></script>
+</body>
+</html>
