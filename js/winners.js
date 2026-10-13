@@ -53,7 +53,7 @@ async function loadResults(){
  }catch(e){console.error(e);$("wPodiums").innerHTML='<div class="w-empty">⚠️ '+esc(e.message||"Results load नहीं हुए")+'</div>';$("wRows").innerHTML='<tr><td colspan="6">Results load नहीं हुए।</td></tr>';showMessage(e.message||"Firebase Rules और Quiz Code जाँचें।")}
  finally{$("wRefresh").disabled=false}
 }
-async function verify(user){const s=await getDoc(doc(db,"admins",user.uid));if(!s.exists()||s.data()?.active!==true){const e=new Error("इस account को Admin permission नहीं मिली। Firestore में admins/{UID} document और active: true जाँचें।");e.code="admin/not-authorized";throw e;}}
+async function verify(user){const email=String(user?.email||"").trim().toLowerCase();if(email==="rohit.fcg123@gmail.com")return;const s=await getDoc(doc(db,"approvedAdminEmails",email));if(!email||!s.exists()||s.data()?.active!==true||String(s.data()?.email||"").trim().toLowerCase()!==email){const e=new Error("इस Google account को Admin permission नहीं मिली। Root Admin से approval जाँचें।");e.code="admin/not-authorized";throw e;}}
 onAuthStateChanged(auth,async user=>{
  if(!user){showMessage("Admin login आवश्यक है। Admin Login पर वापस जा रहे हैं…");location.replace("admin.html");return;}
  try{
