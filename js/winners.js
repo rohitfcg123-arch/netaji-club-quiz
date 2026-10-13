@@ -74,6 +74,9 @@ async function loadResults(){
   }).sort((a,b)=>b.correct-a.correct||(a.completed!==b.completed?(a.completed?-1:1):a.totalMs-b.totalMs)||String(a.name||"").localeCompare(String(b.name||""))).map((p,i)=>({...p,rank:i+1}));
   activeRows=rows;$("wQuizStatus").textContent=(quiz.name||"Quiz")+" · "+code+" · "+(quiz.status==="completed"?"Quiz completed":"Current results");
   showRows(rows,total);showMessage("Results verified from Firebase. Admin-only view.");
+  // Auto-play the celebration once when the winners page first opens and results load.
+  // Browsers may block sound until the visitor interacts; in that case the first tap starts it.
+  if(rows.length){playCelebrationSound();}
  }catch(e){console.error(e);$("wPodiums").innerHTML='<div class="w-empty">⚠️ '+esc(e.message||"Results load नहीं हुए")+'</div>';$("wRows").innerHTML='<tr><td colspan="6">Results load नहीं हुए।</td></tr>';showMessage(e.message||"Firebase Rules और Quiz Code जाँचें।")}
  finally{$("wRefresh").disabled=false}
 }
