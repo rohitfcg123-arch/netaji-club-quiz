@@ -19,6 +19,9 @@ import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -127,7 +130,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = cream
-        window.navigationBarColor = cream
+        window.navigationBarColor = paper
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
 
         try {
@@ -172,8 +176,15 @@ class MainActivity : AppCompatActivity() {
         }
         header.addView(TrustLogoView(this), LinearLayout.LayoutParams(dp(58), dp(58)))
         val brand = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        brand.addView(text("Netaji Social & Welfare Trust", 16f, navy, true))
-        brand.addView(text("WE SERVE • WE CARE • WE EMPOWER", 9.5f, muted, true).apply { setPadding(0, dp(3), 0, 0) })
+        brand.addView(text("Netaji Social & Welfare Trust", 15f, navy, true).apply {
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        brand.addView(text("WE SERVE • WE CARE • WE EMPOWER", 8.5f, muted, true).apply {
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(0, dp(3), 0, 0)
+        })
         header.addView(brand, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(10) })
         val noticeBell = Button(this).apply {
             text = "🔔"
@@ -233,6 +244,18 @@ class MainActivity : AppCompatActivity() {
         }
         root.addView(bottomBar)
         setContentView(root)
+
+        // Android 15+ enforces edge-to-edge for newer target SDKs. Apply system
+        // insets to the header/footer so status icons never cover the brand and
+        // gesture/navigation controls never cover the bottom navigation.
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val status = insets.getInsets(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout())
+            val navigation = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            header.setPadding(dp(16), dp(12) + status.top, dp(16), dp(12))
+            bottomBar.setPadding(dp(6), dp(6), dp(6), dp(6) + navigation.bottom)
+            insets
+        }
+        ViewCompat.requestApplyInsets(root)
     }
 
     private fun renderPage(page: String, keepScroll: Boolean = false) {
