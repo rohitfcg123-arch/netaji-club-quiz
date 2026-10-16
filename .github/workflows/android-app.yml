@@ -1,0 +1,52 @@
+name: Build Netaji Club Android App
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "android-app/**"
+      - ".github/workflows/android-app.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Build debug APK
+        run: gradle -p android-app assembleDebug
+
+      - name: Write debug signing fingerprint
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.android"
+          if [ -f "$HOME/.android/debug.keystore" ]; then
+            keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey > android-app/debug-signing-certificate.txt
+          else
+            echo "Debug keystore was not found." > android-app/debug-signing-certificate.txt
+          fi
+
+      - name: Upload installable APK and setup fingerprint
+        uses: actions/upload-artifact@v4
+        with:
+          name: netaji-club-android-debug
+          path: |
+            android-app/app/build/outputs/apk/debug/app-debug.apk
+            android-app/debug-signing-certificate.txt
+          if-no-files-found: error
+          retention-days: 30
