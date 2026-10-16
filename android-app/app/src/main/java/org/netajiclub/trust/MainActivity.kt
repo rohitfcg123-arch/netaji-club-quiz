@@ -961,10 +961,24 @@ class MainActivity : AppCompatActivity() {
             activeQuiz = snap.data.orEmpty()
             questionSeconds = ((activeQuiz["settings"] as? Map<*, *>)?.get("questionSeconds") as? Number)?.toInt()
                 ?: (activeQuiz["sec"] as? Number)?.toInt() ?: 10
-            when (activeQuiz["status"].stringOr("waiting")) {
-                "completed" -> showQuizCompleted()
-                "starting" -> showWaiting("The quiz is about to start. Please stay on this screen.")
-                "live" -> {
+            val quizState = activeQuiz["status"].stringOr("waiting")
+            val startAt = (activeQuiz["startAt"] as? Number)?.toLong() ?: 0L
+            val questionStartedAt = (activeQuiz["questionStartedAt"] as? Number)?.toLong() ?: 0L
+            val runId = activeQuiz["runId"].stringOr("")
+            when {
+                quizState == "completed" -> showQuizCompleted()
+                quizState == "starting" -> showWaiting("The quiz is about to start. Please stay on this screen.")
+                quizState == "live" && (startAt <= 0L || questionStartedAt <= 0L || runId.isBlank()) -> {
+                    // A stale/incomplete Firebase document must not expose saved questions
+                    // before the Admin has published a valid start marker for this run.
+                    questionRegistration?.remove()
+                    timingRegistration?.remove()
+                    currentQuestionIndex = -1
+                    activeQuestion = emptyMap()
+                    questionStartedMs = 0L
+                    showWaiting("Waiting for the Admin to start the quiz…")
+                }
+                quizState == "live" -> {
                     val idx = (activeQuiz["currentIndex"] as? Number)?.toInt() ?: 0
                     if (idx != currentQuestionIndex) {
                         currentQuestionIndex = idx
