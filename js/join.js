@@ -311,6 +311,17 @@ function startListening(code) {
     }
 
     setExamLock(true);
+    // A reused code can still contain an expired LIVE state from the previous round.
+    // On a fresh join, don't reveal that stale question; wait for Admin's next live question.
+    const liveSeconds = Math.max(5, Number(quizState.settings?.questionSeconds || 10));
+    const liveStartedAt = Number(quizState.questionStartedAt || 0);
+    if (!activeQuestionData && (!liveStartedAt || Date.now() >= liveStartedAt + liveSeconds * 1000)) {
+      questionListenerGeneration++;
+      if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
+      currentIndex = -1;
+      waiting("पिछले Quiz का समय समाप्त है। Admin के नया Quiz शुरू करने या अगले प्रश्न पर जाने का इंतज़ार करें।");
+      return;
+    }
     const index = Number(quizState.currentIndex || 0);
     if (index !== currentIndex || !activeQuestionData) {
       currentIndex = index;
@@ -444,6 +455,10 @@ function updateTimer() {
     const seconds = Number(quizState.settings?.questionSeconds || 10);
     const remainingMs = Math.max(0, seconds * 1000 - (Date.now() - Number(quizState.questionStartedAt || Date.now())));
     $("timer").textContent = Math.ceil(remainingMs / 1000) + " sec";
+    if (remainingMs <= 0) {
+      [...$("options").children].forEach(button => { button.disabled = true; });
+      if (!$("feedback").textContent) $("feedback").textContent = "समय समाप्त। अगले प्रश्न के लिए Admin का इंतज़ार करें।";
+    }
   }
 }
 listenForDefaultBranding((branding, error) => {
