@@ -2,6 +2,7 @@ package org.netajiclub.trust
 
 import android.content.Intent
 import android.graphics.Canvas
+import android.graphics.BitmapFactory
 import android.graphics.Path
 import android.graphics.Paint
 import android.graphics.RectF
@@ -40,6 +41,8 @@ import com.google.firebase.firestore.ListenerRegistration
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.net.URL
+import java.util.concurrent.Executors
 import kotlin.math.ceil
 
 class MainActivity : AppCompatActivity() {
@@ -64,6 +67,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var content: LinearLayout
     private lateinit var scroller: ScrollView
     private lateinit var bottomBar: LinearLayout
+    private lateinit var refreshIndicator: TextView
+    private var pullTracking = false
+    private var pullStartY = 0f
+    private var pullDistance = 0f
+    private var refreshInProgress = false
+    private val imageLoader = Executors.newFixedThreadPool(2)
     private var currentPage = "home"
     private var currentUser: FirebaseUser? = null
     private var pendingQuizAfterLogin = false
@@ -171,12 +180,13 @@ class MainActivity : AppCompatActivity() {
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(12), dp(16), dp(12))
+            setPadding(dp(18), dp(12), dp(16), dp(12))
             setBackgroundColor(paper)
+            elevation = dp(3).toFloat()
         }
-        header.addView(TrustLogoView(this), LinearLayout.LayoutParams(dp(58), dp(58)))
+        header.addView(TrustLogoView(this), LinearLayout.LayoutParams(dp(56), dp(56)))
         val brand = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        brand.addView(text("Netaji Social & Welfare Trust", 15f, navy, true).apply {
+        brand.addView(text("Netaji Social & Welfare Trust", 16f, navy, true).apply {
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
         })
@@ -186,26 +196,47 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, dp(3), 0, 0)
         })
         header.addView(brand, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(10) })
-        val noticeBell = Button(this).apply {
-            text = "🔔"
-            textSize = 18f
-            setTextColor(navy)
+
+        val noticeBell = FrameLayout(this).apply {
             background = rounded(paleBlue, 18)
-            minWidth = dp(44)
-            setPadding(dp(4), dp(2), dp(4), dp(2))
+            isClickable = true
             setOnClickListener { showNotices() }
         }
-        header.addView(noticeBell, LinearLayout.LayoutParams(dp(44), dp(44)))
-        root.addView(header)
+        noticeBell.addView(TextView(this).apply {
+            text = "🔔"
+            textSize = 19f
+            gravity = Gravity.CENTER
+            setTextColor(navy)
+        }, FrameLayout.LayoutParams(-1, -1))
+        noticeBell.addView(View(this).apply {
+            background = rounded(red, 8)
+        }, FrameLayout.LayoutParams(dp(8), dp(8), Gravity.TOP or Gravity.END).apply {
+            topMargin = dp(7)
+            rightMargin = dp(7)
+        })
+        header.addView(noticeBell, LinearLayout.LayoutParams(dp(46), dp(46)))
+        root.addView(header, LinearLayout.LayoutParams(-1, -2))
+
+        refreshIndicator = text("↓  Pull down to refresh", 12f, navy, true).apply {
+            gravity = Gravity.CENTER
+            setPadding(dp(16), dp(9), dp(16), dp(9))
+            background = rounded(paper, 16, 0xFFE3E8F0.toInt())
+            elevation = dp(3).toFloat()
+            visibility = View.GONE
+            alpha = 1f
+        }
+        root.addView(refreshIndicator, margin(-1, dp(38), 22, 5, 22, 5))
 
         scroller = ScrollView(this).apply {
             isFillViewport = true
+            isSmoothScrollingEnabled = true
+            overScrollMode = View.OVER_SCROLL_NEVER
             clipToPadding = false
             setPadding(0, 0, 0, dp(12))
         }
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(16), dp(16), dp(16))
+            setPadding(dp(16), dp(16), dp(16), dp(20))
         }
         scroller.addView(content, ViewGroup.LayoutParams(-1, -2))
         root.addView(scroller, LinearLayout.LayoutParams(-1, 0, 1f))
@@ -214,8 +245,8 @@ class MainActivity : AppCompatActivity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
             setBackgroundColor(paper)
-            elevation = dp(10).toFloat()
-            setPadding(dp(6), dp(6), dp(6), dp(6))
+            elevation = dp(12).toFloat()
+            setPadding(dp(8), dp(7), dp(8), dp(7))
         }
         listOf(
             Triple("⌂", "Home", "home"),
@@ -226,7 +257,9 @@ class MainActivity : AppCompatActivity() {
             val button = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                setPadding(dp(4), dp(4), dp(4), dp(4))
+                tag = item.third
+                setPadding(dp(6), dp(5), dp(6), dp(5))
+                background = rounded(paper, 15)
                 setOnClickListener {
                     if (currentPage == "quiz-live") {
                         toast("Please finish the live quiz first.")
@@ -244,6 +277,44 @@ class MainActivity : AppCompatActivity() {
         }
         root.addView(bottomBar)
         setContentView(root)
+        updateBottomNavigation()
+
+        // A small custom pull gesture works consistently without adding a dependency
+        // or intercepting taps inside inputs/buttons.
+        scroller.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    pullTracking = scroller.scrollY <= 0 && !refreshInProgress
+                    pullStartY = event.rawY
+                    pullDistance = 0f
+                }
+                android.view.MotionEvent.ACTION_MOVE -> {
+                    if (pullTracking && scroller.scrollY <= 0 && !refreshInProgress) {
+                        pullDistance = (event.rawY - pullStartY).coerceAtLeast(0f)
+                        if (pullDistance > dp(18)) {
+                            refreshIndicator.visibility = View.VISIBLE
+                            refreshIndicator.translationY = (pullDistance * 0.18f).coerceAtMost(dp(22).toFloat())
+                            refreshIndicator.text = if (pullDistance >= dp(82)) "↑  Release to refresh" else "↓  Pull down to refresh"
+                        }
+                    }
+                }
+                android.view.MotionEvent.ACTION_UP -> {
+                    if (pullTracking && pullDistance >= dp(82) && scroller.scrollY <= dp(2)) {
+                        performPullRefresh()
+                    } else {
+                        hideRefreshIndicator()
+                    }
+                    pullTracking = false
+                    pullDistance = 0f
+                }
+                android.view.MotionEvent.ACTION_CANCEL -> {
+                    pullTracking = false
+                    pullDistance = 0f
+                    hideRefreshIndicator()
+                }
+            }
+            false
+        }
 
         // Android 15+ enforces edge-to-edge for newer target SDKs. Apply system
         // insets to the header/footer so status icons never cover the brand and
@@ -251,8 +322,8 @@ class MainActivity : AppCompatActivity() {
         ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             val status = insets.getInsets(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout())
             val navigation = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
-            header.setPadding(dp(16), dp(12) + status.top, dp(16), dp(12))
-            bottomBar.setPadding(dp(6), dp(6), dp(6), dp(6) + navigation.bottom)
+            header.setPadding(dp(18), dp(12) + status.top, dp(16), dp(12))
+            bottomBar.setPadding(dp(8), dp(7), dp(8), dp(7) + navigation.bottom)
             insets
         }
         ViewCompat.requestApplyInsets(root)
@@ -264,6 +335,63 @@ class MainActivity : AppCompatActivity() {
         content.removeAllViews()
         if (!keepScroll) scroller.scrollTo(0, 0)
         bottomBar.visibility = if (page == "quiz-live") View.GONE else View.VISIBLE
+        updateBottomNavigation()
+    }
+
+    private fun updateBottomNavigation() {
+        if (!::bottomBar.isInitialized) return
+        val selected = when (currentPage) {
+            "notices" -> "notices"
+            "activities" -> "activities"
+            "profile", "contact", "detail", "login", "quiz-join", "quiz-completed" -> "profile"
+            else -> "home"
+        }
+        for (i in 0 until bottomBar.childCount) {
+            val item = bottomBar.getChildAt(i) as? LinearLayout ?: continue
+            val isSelected = item.tag == selected
+            item.background = rounded(if (isSelected) paleBlue else paper, 15)
+            val icon = item.getChildAt(0) as? TextView
+            val label = item.getChildAt(1) as? TextView
+            icon?.setTextColor(if (isSelected) navy else muted)
+            label?.setTextColor(if (isSelected) navy else muted)
+            label?.typeface = if (isSelected) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+        }
+    }
+
+    private fun performPullRefresh() {
+        if (refreshInProgress) return
+        refreshInProgress = true
+        refreshIndicator.visibility = View.VISIBLE
+        refreshIndicator.translationY = dp(8).toFloat()
+        refreshIndicator.alpha = 1f
+        refreshIndicator.text = "↻  Refreshing…"
+        refreshIndicator.animate().translationY(0f).setDuration(160).start()
+        root.postDelayed({
+            if (currentPage == "quiz-live" || currentPage == "quiz-waiting") {
+                if (activeCode.isNotBlank()) listenQuiz(activeCode)
+            } else {
+                subscribeTrustContent()
+                when (currentPage) {
+                    "home" -> showHome()
+                    "notices" -> showNotices()
+                    "events" -> showEvents()
+                    "activities" -> showActivities()
+                    "profile" -> showProfile()
+                }
+            }
+            root.postDelayed({ hideRefreshIndicator() }, 650)
+        }, 220)
+    }
+
+    private fun hideRefreshIndicator() {
+        if (!::refreshIndicator.isInitialized || refreshInProgress && refreshIndicator.text.startsWith("↻")) return
+        refreshIndicator.animate().alpha(0f).translationY(0f).setDuration(130).withEndAction {
+            refreshIndicator.visibility = View.GONE
+            refreshIndicator.alpha = 1f
+            refreshIndicator.text = "↓  Pull down to refresh"
+            refreshIndicator.translationY = 0f
+            refreshInProgress = false
+        }.start()
     }
 
     private fun subscribeTrustContent() {
