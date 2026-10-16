@@ -1286,6 +1286,163 @@ class MainActivity : AppCompatActivity() {
         }, margin(-1, dp(48), 0, 0, 0, 0))
     }
 
+    private fun addPageHeading(title: String, subtitle: String) {
+        val heading = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val back = TextView(this).apply {
+            text = "‹"
+            textSize = 36f
+            gravity = Gravity.CENTER
+            setTextColor(navy)
+            background = rounded(paper, 15, 0xFFE7E0D4.toInt())
+            isClickable = true
+            setOnClickListener { showHome() }
+        }
+        heading.addView(back, LinearLayout.LayoutParams(dp(42), dp(42)))
+        val copy = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(11), 0, 0, 0)
+        }
+        copy.addView(text(title, 21f, navy, true))
+        copy.addView(text(subtitle, 11.5f, muted).apply {
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(0, dp(3), 0, 0)
+        })
+        heading.addView(copy, LinearLayout.LayoutParams(0, -2, 1f))
+        content.addView(heading, margin(-1, -2, 0, 0, 0, 16))
+    }
+
+    private fun pinnedNoticeCard(notice: Map<String, Any?>): View {
+        val card = panel()
+        card.orientation = LinearLayout.HORIZONTAL
+        card.gravity = Gravity.CENTER_VERTICAL
+        card.setPadding(dp(12), dp(12), dp(12), dp(12))
+        val picture = FrameLayout(this).apply {
+            background = rounded(0xFFFFE4C9.toInt(), 16)
+            clipToOutline = true
+        }
+        picture.addView(TrustNoticeArtworkView(this), FrameLayout.LayoutParams(-1, -1))
+        card.addView(picture, LinearLayout.LayoutParams(dp(94), dp(104)))
+        val info = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), 0, 0, 0)
+        }
+        info.addView(text("📅  " + dateLabel(notice["publishedAt"]), 10.5f, muted, true))
+        info.addView(text(notice["title"].stringOr("Notice"), 15f, navy, true).apply {
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(0, dp(5), 0, dp(3))
+        })
+        info.addView(text(notice["body"].stringOr(""), 11.5f, muted).apply {
+            maxLines = 3
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        info.addView(text(notice["category"].stringOr("General"), 10.5f, green, true).apply {
+            setPadding(0, dp(5), 0, 0)
+        })
+        card.addView(info, LinearLayout.LayoutParams(0, -2, 1f))
+        card.setOnClickListener { showNoticeDetail(notice) }
+        return card
+    }
+
+    private fun activityFeatureCard(activity: Map<String, Any?>): View {
+        val category = activity["category"].stringOr("Community")
+        val card = panel()
+        card.setPadding(0, 0, 0, 0)
+        card.clipToOutline = true
+        val media = FrameLayout(this).apply {
+            background = rounded(activityTint(category), 17)
+            clipToOutline = true
+        }
+        val fallback = TextView(this).apply {
+            text = activityIcon(category)
+            textSize = 38f
+            gravity = Gravity.CENTER
+            setTextColor(navy)
+        }
+        media.addView(fallback, FrameLayout.LayoutParams(-1, -1))
+        val imageUrl = activity["imageUrl"].stringOr("")
+        if (imageUrl.startsWith("https://", true)) {
+            val image = ImageView(this).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                background = rounded(activityTint(category), 17)
+                visibility = View.INVISIBLE
+                tag = imageUrl
+            }
+            media.addView(image, FrameLayout.LayoutParams(-1, -1))
+            loadActivityImage(image, imageUrl)
+        }
+        card.addView(media, LinearLayout.LayoutParams(-1, dp(112)))
+        val details = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), dp(11), dp(12), dp(13))
+        }
+        details.addView(text(category, 9.5f, green, true).apply {
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        details.addView(text(activity["title"].stringOr("Activity"), 13.5f, navy, true).apply {
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(0, dp(4), 0, dp(4))
+        })
+        details.addView(text(activity["description"].stringOr(""), 11f, muted).apply {
+            maxLines = 3
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        details.addView(text("View activity  ›", 10.5f, saffron, true).apply {
+            setPadding(0, dp(8), 0, 0)
+        })
+        card.addView(details)
+        card.setOnClickListener { showActivityDetail(activity) }
+        return card
+    }
+
+    private fun loadActivityImage(target: ImageView, imageUrl: String) {
+        imageLoader.execute {
+            val bitmap = runCatching {
+                val connection = URL(imageUrl).openConnection()
+                connection.connectTimeout = 4500
+                connection.readTimeout = 5500
+                connection.getInputStream().use { BitmapFactory.decodeStream(it) }
+            }.getOrNull()
+            if (bitmap != null) {
+                runOnUiThread {
+                    if (!isFinishing && target.tag == imageUrl) {
+                        target.setImageBitmap(bitmap)
+                        target.visibility = View.VISIBLE
+                    }
+                }
+            }
+        }
+    }
+
+    private fun activityIcon(category: String): String {
+        val value = category.lowercase(Locale.ROOT)
+        return when {
+            value.contains("education") || value.contains("student") -> "📘"
+            value.contains("environment") || value.contains("clean") || value.contains("green") -> "🌱"
+            value.contains("health") || value.contains("welfare") -> "❤"
+            value.contains("empower") || value.contains("community") -> "🤝"
+            value.contains("volunteer") -> "🧡"
+            else -> "🌿"
+        }
+    }
+
+    private fun activityTint(category: String): Int {
+        val value = category.lowercase(Locale.ROOT)
+        return when {
+            value.contains("education") || value.contains("student") -> paleBlue
+            value.contains("environment") || value.contains("clean") || value.contains("green") -> paleGreen
+            value.contains("health") || value.contains("welfare") -> 0xFFFFE8EC.toInt()
+            value.contains("empower") || value.contains("community") -> 0xFFFFF0D8.toInt()
+            else -> 0xFFF0EAFE.toInt()
+        }
+    }
+
     private fun sectionHeading(title: String, action: String, click: () -> Unit): LinearLayout =
         LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
