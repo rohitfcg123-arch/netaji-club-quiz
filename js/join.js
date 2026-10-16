@@ -138,15 +138,14 @@ onAuthStateChanged(auth, async user => {
   $("playerName").value = savedName;
   if (savedName) localStorage.setItem("ncQuizPlayerName_" + user.uid, savedName);
 
-  // If this player reloads after pressing Start Quiz, restore the last waiting/live quiz.
+  // Remember the previous code as a convenience, but NEVER join automatically on login.
+  // A player must explicitly press Start Quiz after reviewing/entering the code.
   const savedCode = localStorage.getItem("ncQuizCode_" + user.uid);
-  if (savedCode && !activeCode) {
-    const savedPlayerName = $("playerName").value.trim();
-    if (savedPlayerName) {
-      $("quizCode").value = savedCode;
-      await joinQuiz(savedCode, savedPlayerName, true);
-    }
+  if (savedCode && !activeCode && !$("quizCode").value.trim()) {
+    $("quizCode").value = savedCode;
   }
+  $("joinPanel").classList.remove("hidden");
+  $("game").classList.add("hidden");
 });
 
 $("joinForm").addEventListener("submit", async event => {
