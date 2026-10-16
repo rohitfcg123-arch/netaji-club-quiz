@@ -354,6 +354,14 @@ if (hostMode) {
     hostMessage("Live Review connected — waiting for quiz updates…", "success");
   }
 } else {
+  // Persist player authentication before any login interaction. The Join page is a separate
+  // navigation, so session-only/non-persistent auth can bounce users back to this login screen.
+  try {
+    await setPersistence(auth, browserLocalPersistence);
+  } catch (persistenceError) {
+    console.error("Could not enable persistent player authentication:", persistenceError);
+    authNotice("Login session save नहीं हो पाया। Chrome में cookies/site data allow करके दोबारा कोशिश करें।");
+  }
   // This site is hosted on GitHub Pages, so use popup OAuth instead of a full
   // redirect through firebaseapp.com. Modern browsers can block the cross-site
   // storage used by redirect sign-in on non-Firebase hosting.
