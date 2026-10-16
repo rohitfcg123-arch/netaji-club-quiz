@@ -82,7 +82,16 @@
   let language = localStorage.getItem(KEY) || "en";
   const reverse = Object.fromEntries(Object.entries(dict).map(([hi,en]) => [en,hi]));
   const englishOnly = new Set(["NC","A","B","C","D","—","0","1","2","3","4","5","6","7","8","9","10","100","₹","%"]);
-  const excluded = el => !!el?.closest('#question,#options,#feedback,#game,.host-board,[data-keep-language],#resultDetail,#resultsBoard');
+  const excluded = el => {
+    if (!el) return false;
+    if (el.closest('#options,.host-board,[data-keep-language],#resultDetail,#resultsBoard')) return true;
+    // Keep the actual live question untouched, but translate waiting/status text in the game card.
+    if (el.closest('#question')) {
+      const status = document.getElementById('status')?.textContent?.trim().toLowerCase() || '';
+      if (/live|question|प्रश्न|चल रहा/.test(status)) return true;
+    }
+    return false;
+  };
   function translateText(value, lang) {
     const raw = value;
     const trimmed = raw.trim();
