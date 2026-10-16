@@ -2,5 +2,5 @@
     <string name="app_name">Netaji Social &amp; Welfare Trust</string>
     <!-- Replace with the Web OAuth client ID from the existing netaji-club Firebase project. -->
     <string name="web_client_id">1085917792894-n2pnku8v7p41kqtf4jg3ts0gf79lqjhs.apps.googleusercontent.com</string>
-    <string name="firebase_app_id">REPLACE_WITH_ANDROID_FIREBASE_APP_ID</string>
+    <string name="firebase_app_id">1:1085917792894:android:9eca4d3fef17e342dc262f</string>
 </resources>
