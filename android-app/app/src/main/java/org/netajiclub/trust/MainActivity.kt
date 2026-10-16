@@ -379,12 +379,13 @@ class MainActivity : AppCompatActivity() {
                     "profile" -> showProfile()
                 }
             }
-            root.postDelayed({ hideRefreshIndicator() }, 650)
+            root.postDelayed({ hideRefreshIndicator(force = true) }, 650)
         }, 220)
     }
 
-    private fun hideRefreshIndicator() {
-        if (!::refreshIndicator.isInitialized || refreshInProgress && refreshIndicator.text.startsWith("↻")) return
+    private fun hideRefreshIndicator(force: Boolean = false) {
+        if (!::refreshIndicator.isInitialized) return
+        if (refreshInProgress && !force) return
         refreshIndicator.animate().alpha(0f).translationY(0f).setDuration(130).withEndAction {
             refreshIndicator.visibility = View.GONE
             refreshIndicator.alpha = 1f
@@ -1552,18 +1553,22 @@ class MainActivity : AppCompatActivity() {
         isAllCaps = false
         textSize = 14f
         typeface = Typeface.DEFAULT_BOLD
+        minHeight = dp(50)
         setTextColor(paper)
-        background = rounded(saffron, 15)
-        setPadding(dp(12), dp(10), dp(12), dp(10))
+        background = rounded(saffron, 16)
+        elevation = dp(2).toFloat()
+        setPadding(dp(14), dp(10), dp(14), dp(10))
         setOnClickListener { click() }
     }
 
     private fun secondaryButton(label: String, click: () -> Unit): Button = Button(this).apply {
         text = label
         isAllCaps = false
-        textSize = 14f
+        textSize = 13.5f
+        typeface = Typeface.DEFAULT_BOLD
+        minHeight = dp(48)
         setTextColor(navy)
-        background = rounded(paper, 15, 0xFFD2DCE9.toInt())
+        background = rounded(paper, 16, 0xFFD2DCE9.toInt())
         setPadding(dp(12), dp(8), dp(12), dp(8))
         setOnClickListener { click() }
     }
@@ -1671,6 +1676,113 @@ class MainActivity : AppCompatActivity() {
         questionRegistration?.remove()
         contentRegistrations.forEach { it.remove() }
     }
+}
+
+private class TrustHeroArtworkView(context: Context) : View(context) {
+    private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFEED3.toInt() }
+    private val orangeStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFFF26A21.toInt(); style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND
+    }
+    private val greenStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFF238548.toInt(); style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND
+    }
+    private val navyFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF102F5D.toInt(); style = Paint.Style.FILL }
+    private val faceFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFD9B0.toInt(); style = Paint.Style.FILL }
+    private val paleCrowd = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFD5D9D6.toInt(); style = Paint.Style.FILL }
+    private val deepCrowd = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF9CA9A8.toInt(); style = Paint.Style.FILL }
+    private val glassStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFF102F5D.toInt(); style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        val w = width.toFloat()
+        val h = height.toFloat()
+        if (w <= 0f || h <= 0f) return
+        canvas.drawRoundRect(RectF(0f, 0f, w, h), dp(24).toFloat(), dp(24).toFloat(), backgroundPaint)
+
+        orangeStroke.strokeWidth = h * .055f
+        greenStroke.strokeWidth = h * .055f
+        val orangeWave = Path().apply {
+            moveTo(w * .40f, h * .20f)
+            cubicTo(w * .64f, h * .01f, w * .73f, h * .25f, w * 1.08f, h * .08f)
+        }
+        val greenWave = Path().apply {
+            moveTo(w * .34f, h * .61f)
+            cubicTo(w * .58f, h * .37f, w * .73f, h * .75f, w * 1.08f, h * .46f)
+        }
+        canvas.drawPath(orangeWave, orangeStroke)
+        canvas.drawPath(greenWave, greenStroke)
+
+        // Distant community silhouettes create a subtle illustrated footer.
+        for (i in 0 until 15) {
+            val x = w * (.31f + i * .047f)
+            val y = h * (.80f + (i % 3) * .018f)
+            val r = h * (.019f + (i % 2) * .003f)
+            canvas.drawCircle(x, y, r, if (i % 3 == 0) deepCrowd else paleCrowd)
+            canvas.drawRoundRect(
+                RectF(x - r * 1.15f, y + r * .8f, x + r * 1.15f, y + h * .15f),
+                r, r, if (i % 3 == 0) deepCrowd else paleCrowd
+            )
+        }
+
+        // Netaji-inspired cap, profile and shoulders on the right-hand side.
+        val s = h
+        val cx = w * .79f
+        val headTop = h * .24f
+        val headBottom = h * .61f
+        canvas.drawRoundRect(RectF(cx - s * .22f, h * .57f, cx + s * .24f, h * .94f), s * .08f, s * .08f, navyFill)
+        canvas.drawOval(RectF(cx - s * .19f, headTop, cx + s * .17f, headBottom), faceFill)
+        val cap = Path().apply {
+            moveTo(cx - s * .22f, headTop + s * .035f)
+            quadTo(cx - s * .06f, headTop - s * .12f, cx + s * .16f, headTop + s * .025f)
+            lineTo(cx + s * .21f, headTop + s * .09f)
+            lineTo(cx - s * .24f, headTop + s * .09f)
+            close()
+        }
+        canvas.drawPath(cap, navyFill)
+        canvas.drawRoundRect(RectF(cx - s * .25f, headTop + s * .08f, cx + s * .22f, headTop + s * .12f), s * .025f, s * .025f, navyFill)
+        glassStroke.strokeWidth = s * .014f
+        canvas.drawOval(RectF(cx - s * .14f, headTop + s * .21f, cx - s * .015f, headTop + s * .295f), glassStroke)
+        canvas.drawOval(RectF(cx + s * .012f, headTop + s * .21f, cx + s * .14f, headTop + s * .295f), glassStroke)
+        canvas.drawLine(cx - s * .015f, headTop + s * .25f, cx + s * .012f, headTop + s * .25f, glassStroke)
+        canvas.drawLine(cx + s * .03f, headTop + s * .30f, cx - s * .005f, headTop + s * .38f, glassStroke)
+        canvas.drawLine(cx - s * .015f, headTop + s * .405f, cx + s * .065f, headTop + s * .40f, glassStroke)
+        canvas.drawLine(cx - s * .13f, h * .67f, cx - s * .055f, h * .77f, orangeStroke)
+        canvas.drawLine(cx + s * .13f, h * .67f, cx + s * .055f, h * .77f, greenStroke)
+        orangeStroke.strokeWidth = h * .022f
+        greenStroke.strokeWidth = h * .022f
+    }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density + .5f).toInt()
+}
+
+private class TrustNoticeArtworkView(context: Context) : View(context) {
+    private val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFE7CC.toInt(); style = Paint.Style.FILL }
+    private val navy = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF102F5D.toInt(); style = Paint.Style.FILL }
+    private val green = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF238548.toInt(); style = Paint.Style.FILL }
+    private val orange = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFF26A21.toInt(); style = Paint.Style.FILL }
+    private val white = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt(); style = Paint.Style.FILL }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        val w = width.toFloat()
+        val h = height.toFloat()
+        if (w <= 0f || h <= 0f) return
+        canvas.drawRoundRect(RectF(0f, 0f, w, h), dp(16).toFloat(), dp(16).toFloat(), bg)
+        canvas.drawCircle(w * .52f, h * .39f, h * .12f, white)
+        canvas.drawRoundRect(RectF(w * .29f, h * .52f, w * .74f, h * .89f), h * .08f, h * .08f, navy)
+        canvas.drawCircle(w * .27f, h * .49f, h * .09f, green)
+        canvas.drawRoundRect(RectF(w * .12f, h * .60f, w * .40f, h * .91f), h * .06f, h * .06f, green)
+        canvas.drawCircle(w * .77f, h * .50f, h * .09f, orange)
+        canvas.drawRoundRect(RectF(w * .64f, h * .61f, w * .91f, h * .91f), h * .06f, h * .06f, orange)
+        // Health cross badge.
+        canvas.drawRoundRect(RectF(w * .43f, h * .12f, w * .61f, h * .34f), h * .035f, h * .035f, orange)
+        canvas.drawRect(RectF(w * .49f, h * .145f, w * .55f, h * .315f), white)
+        canvas.drawRect(RectF(w * .455f, h * .205f, w * .585f, h * .265f), white)
+    }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density + .5f).toInt()
 }
 
 private class TrustLogoView(context: Context) : View(context) {
