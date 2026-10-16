@@ -185,7 +185,11 @@ class MainActivity : AppCompatActivity() {
             setBackgroundColor(paper)
             elevation = dp(3).toFloat()
         }
-        header.addView(ImageView(this).apply {\n            setImageResource(R.drawable.trust_logo)\n            scaleType = ImageView.ScaleType.FIT_CENTER\n            contentDescription = "Netaji Social and Welfare Trust official logo"\n        }, LinearLayout.LayoutParams(dp(56), dp(56)))
+        header.addView(ImageView(this).apply {
+            setImageResource(R.drawable.trust_logo)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            contentDescription = "Netaji Social and Welfare Trust official logo"
+        }, LinearLayout.LayoutParams(dp(56), dp(56)))
         val brand = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         brand.addView(text("Netaji Social & Welfare Trust", 16f, navy, true).apply {
             maxLines = 1
@@ -451,17 +455,24 @@ class MainActivity : AppCompatActivity() {
         copy.addView(text("NETAJI SOCIAL & WELFARE TRUST", 8.5f, saffron, true).apply {
             maxLines = 1
         })
-        copy.addView(text("Serving our\ncommunity,\ntogether", 24f, navy, true).apply {
+        copy.addView(text("Serving our
+community,
+together", 24f, navy, true).apply {
             setLineSpacing(dp(1).toFloat(), 1f)
             setPadding(0, dp(5), 0, dp(8))
         })
-        copy.addView(text("Education  |  Environment\nSocial Welfare  |  Health\nEmpowerment", 11.5f, ink))
+        copy.addView(text("Education  |  Environment
+Social Welfare  |  Health
+Empowerment", 11.5f, ink))
         hero.addView(copy, FrameLayout.LayoutParams(dp(220), -1, Gravity.TOP or Gravity.START))
         content.addView(hero, margin(-1, dp(242), 0, 0, 0, 18))
 
         content.addView(sectionHeading("Explore", "About the Trust") {
             showDetail("About Us", contactInfo["about"].stringOr("Netaji Social & Welfare Trust works to support education, environmental care, social welfare, health and community empowerment.") +
-                "\n\nMission\n" + contactInfo["mission"].stringOr("To serve people and build a stronger, healthier and more inclusive community."))
+                "
+
+Mission
+" + contactInfo["mission"].stringOr("To serve people and build a stronger, healthier and more inclusive community."))
         }, margin(-1, -2, 0, 0, 0, 10))
 
         val row1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -726,7 +737,10 @@ class MainActivity : AppCompatActivity() {
                         "Quiz & Competitions" -> openQuiz()
                         "About Us" -> showDetail("About Us",
                             contactInfo["about"].stringOr("Netaji Social & Welfare Trust works to support education, environmental care, social welfare, health and community empowerment.") +
-                                "\n\nMission\n" + contactInfo["mission"].stringOr("To serve people and build a stronger, healthier and more inclusive community."))
+                                "
+
+Mission
+" + contactInfo["mission"].stringOr("To serve people and build a stronger, healthier and more inclusive community."))
                         "Members" -> showDetail("Members", "The Trust's member and committee directory will appear here when it is published.")
                         "Donate / Support" -> showDonation()
                         "Contact Us" -> showContact()
@@ -762,7 +776,10 @@ class MainActivity : AppCompatActivity() {
         val detail = if (upi.isBlank()) {
             "Donation / support details have not been published yet. Please contact the Trust admin for verified payment details."
         } else {
-            "Support the Trust using UPI ID:\n" + upi + "\n\nPlease verify the recipient name before making a payment."
+            "Support the Trust using UPI ID:
+" + upi + "
+
+Please verify the recipient name before making a payment."
         }
         showDetail("Donate / Support", detail)
     }
@@ -826,7 +843,9 @@ class MainActivity : AppCompatActivity() {
         val clientId = getString(R.string.web_client_id)
         if (clientId.startsWith("REPLACE_")) {
             showDetail("One-time setup required",
-                "The Android app needs the Web OAuth Client ID from the existing netaji-club Firebase project.\n\nUpdate android-app/app/src/main/res/values/strings.xml, then rebuild the APK. The website login is unchanged.")
+                "The Android app needs the Web OAuth Client ID from the existing netaji-club Firebase project.
+
+Update android-app/app/src/main/res/values/strings.xml, then rebuild the APK. The website login is unchanged.")
             return
         }
         try {
@@ -1344,8 +1363,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun showEventDetail(event: Map<String, Any?>) {
         showDetail(event["title"].stringOr("Event"),
-            event["description"].stringOr("") + "\n\nDate: " + event["dateText"].stringOr("To be announced") +
-                "\nLocation: " + event["location"].stringOr("To be announced"))
+            event["description"].stringOr("") + "
+
+Date: " + event["dateText"].stringOr("To be announced") +
+                "
+Location: " + event["location"].stringOr("To be announced"))
     }
 
     private fun showActivityDetail(activity: Map<String, Any?>) {
