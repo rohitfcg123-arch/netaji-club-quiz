@@ -4,7 +4,21 @@
   if (params.get("host") === "1" || document.body.classList.contains("host-mode")) return;
   const KEY = "ncUiLanguage";
   const dict = {
-    "नेताजी क्लब":"Netaji Club","नेताजी क्लब क्विज़":"Netaji Club Quiz","ज्ञान • संस्कृति • एकता":"Devotion • Strength • Knowledge",
+    "नेताजी क्लब":"Netaji Club","भक्ति • शक्ति • ज्ञान":"Devotion • Strength • Knowledge",
+    "ज्ञान • संस्कृति • एकता":"Devotion • Culture • Unity",
+    "जय माँ काली! माँ के आशीर्वाद से रोशन हो जीवन।":"Hail Maa Kali! May her blessings brighten your life.",
+    "काली पूजा क्विज़ में शामिल हों":"Join the Kali Puja Quiz",
+    "काली पूजा क्विज़ प्रतियोगिता":"Kali Puja Quiz Competition",
+    "काली पूजा क्विज़":"Kali Puja Quiz",
+    "काली पूजा विशेष":"Kali Puja Special",
+    "काली पूजा स्पेशल":"Kali Puja Special",
+    "अपना नाम और Admin से मिला Quiz Code डालें। फिर Start Quiz दबाएँ।":"Enter your name and the Quiz Code from the admin, then press Start Quiz.",
+    "अपना नाम और Admin से मिला Quiz Code डालें। फिर Start Quiz दबाएँ। Admin के Quiz शुरू करते ही प्रश्न अपने आप दिखने लगेंगे।":"Enter your name and the Quiz Code from the admin, then press Start Quiz. Questions will appear automatically when the admin starts the quiz.",
+    "सरस्वती पूजा क्विज़ प्रतियोगिता":"Saraswati Puja Quiz Competition",
+    "माँ के उत्सव में प्रवेश करें":"Enter the Festival",
+    "नेताजी क्लब द्वारा आयोजित विशेष काली पूजा क्विज़ प्रतियोगिता में भाग लें, अपने ज्ञान का प्रदर्शन करें और":"Join the special Kali Puja Quiz organised by Netaji Club and showcase your knowledge.",
+    "माँ काली की भक्ति, ज्ञान और उत्सव के इस पावन अवसर पर आपका हार्दिक स्वागत है!":"Welcome to this sacred celebration of devotion, knowledge and Maa Kali!",
+    "काली पूजा क्विज़ में शामिल हों":"Join the Kali Puja Quiz","नेताजी क्लब क्विज़":"Netaji Club Quiz","ज्ञान • संस्कृति • एकता":"Devotion • Strength • Knowledge",
     "Organized by":"Organized by","KALI PUJA SPECIAL":"KALI PUJA SPECIAL","CONTROL CENTRE":"CONTROL CENTRE",
     "Admin Dashboard":"Admin Dashboard","Admin Panel":"Admin Panel","Player Portal":"Player Portal","Logout":"Logout",
     "Winners Celebration":"Winners Celebration","Theme Studio":"Theme Studio","Registration Settings":"Registration Settings",
