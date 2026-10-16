@@ -230,7 +230,23 @@ function startListening(code) {
       waiting("इस Quiz Code का Quiz नहीं मिला।");
       return;
     }
-    quizState = snapshot.data();
+    const incomingQuizState = snapshot.data();
+    const previousStatus = quizState?.status || "";
+    const previousRunId = String(quizState?.runId || "");
+    const incomingRunId = String(incomingQuizState?.runId || "");
+
+    // Force a fresh question listener whenever a new live run starts. Without this,
+    // a player can remain on the old waiting/question state if the admin restarts
+    // the same quiz at the same question index.
+    if (incomingQuizState.status === "live" &&
+        (previousStatus !== "live" || incomingRunId !== previousRunId)) {
+      currentIndex = -1;
+      activeQuestionData = null;
+      answered = false;
+      if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
+    }
+
+    quizState = incomingQuizState;
     refreshActiveBranding();
     if (quizState.status === "completed") {
       completedNormally = true;
