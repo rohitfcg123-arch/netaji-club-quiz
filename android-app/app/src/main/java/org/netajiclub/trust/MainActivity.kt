@@ -2,6 +2,8 @@ package org.netajiclub.trust
 
 import android.content.Intent
 import android.graphics.Canvas
+import android.graphics.BitmapFactory
+import android.graphics.Path
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
@@ -1124,27 +1126,46 @@ class MainActivity : AppCompatActivity() {
 
 private class TrustLogoView(context: Context) : View(context) {
     private val outer = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFF26A21.toInt(); style = Paint.Style.STROKE; strokeWidth = 4f }
-    private val inner = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF102F5D.toInt(); style = Paint.Style.STROKE; strokeWidth = 3f }
-    private val navyFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF102F5D.toInt(); style = Paint.Style.FILL }
-    private val greenFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF238548.toInt(); style = Paint.Style.FILL }
-    private val orangeFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFF26A21.toInt(); style = Paint.Style.FILL }
-    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF102F5D.toInt(); textAlign = Paint.Align.CENTER; typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD) }
+    private val inner = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF102F5D.toInt(); style = Paint.Style.STROKE; strokeWidth = 2f }
+    private val fallbackFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF102F5D.toInt(); style = Paint.Style.FILL }
+    private val fallbackOrange = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFF26A21.toInt(); style = Paint.Style.FILL }
+    private val fallbackGreen = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF238548.toInt(); style = Paint.Style.FILL }
+    private val fallbackText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFF102F5D.toInt()
+        textAlign = Paint.Align.CENTER
+        typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
+    }
+    private val trustLogo = runCatching { BitmapFactory.decodeResource(resources, R.drawable.netaji_trust_logo) }.getOrNull()
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val s = minOf(width, height).toFloat()
         val cx = width / 2f
         val cy = height / 2f
-        val r = s * 0.46f
+        val r = s * 0.47f
+        if (trustLogo != null) {
+            val path = Path().apply { addCircle(cx, cy, r - s * .025f, Path.Direction.CW) }
+            val save = canvas.save()
+            canvas.clipPath(path)
+            val dest = RectF(cx - r + s * .025f, cy - r + s * .025f, cx + r - s * .025f, cy + r - s * .025f)
+            canvas.drawBitmap(trustLogo, null, dest, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
+            canvas.restoreToCount(save)
+            canvas.drawCircle(cx, cy, r, outer)
+            canvas.drawCircle(cx, cy, r - s * .055f, inner)
+            return
+        }
+
+        // Safe vector fallback if the raster logo cannot be decoded.
         canvas.drawCircle(cx, cy, r, outer)
         canvas.drawCircle(cx, cy, r - s * .07f, inner)
-        canvas.drawArc(RectF(cx - r*.75f, cy - r*.75f, cx + r*.75f, cy + r*.75f), 200f, 140f, false, orangeFill)
-        canvas.drawArc(RectF(cx - r*.75f, cy - r*.75f, cx + r*.75f, cy + r*.75f), 20f, 140f, false, greenFill)
-        textPaint.textSize = s * .12f
-        canvas.drawText("NETAJI SOCIAL", cx, cy - s*.24f, textPaint)
-        textPaint.textSize = s * .25f
-        canvas.drawText("NST", cx, cy + s*.03f, textPaint)
-        textPaint.textSize = s * .12f
-        canvas.drawText("WELFARE TRUST", cx, cy + s*.23f, textPaint)
-        canvas.drawCircle(cx, cy + s*.33f, s*.025f, navyFill)
+        canvas.drawArc(RectF(cx - r*.75f, cy - r*.75f, cx + r*.75f, cy + r*.75f), 200f, 140f, false, fallbackOrange)
+        canvas.drawArc(RectF(cx - r*.75f, cy - r*.75f, cx + r*.75f, cy + r*.75f), 20f, 140f, false, fallbackGreen)
+        fallbackText.textSize = s * .12f
+        canvas.drawText("NETAJI SOCIAL", cx, cy - s*.24f, fallbackText)
+        fallbackText.textSize = s * .25f
+        canvas.drawText("NST", cx, cy + s*.03f, fallbackText)
+        fallbackText.textSize = s * .12f
+        canvas.drawText("WELFARE TRUST", cx, cy + s*.23f, fallbackText)
+        canvas.drawCircle(cx, cy + s*.33f, s*.025f, fallbackFill)
     }
 }
