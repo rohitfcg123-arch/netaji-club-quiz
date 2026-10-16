@@ -4,6 +4,12 @@ import { onAuthStateChanged, signOut, getIdTokenResult } from "https://www.gstat
 import { doc, getDoc, onSnapshot, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const $ = id => document.getElementById(id);
+// Ensure Google login survives navigation from index.html to join.html and page reloads.
+try {
+  await setPersistence(auth, browserLocalPersistence);
+} catch (persistenceError) {
+  console.error("Could not enable persistent player authentication on Join page:", persistenceError);
+}
 let currentUser = null;
 let activeCode = "";
 let playerName = "";
