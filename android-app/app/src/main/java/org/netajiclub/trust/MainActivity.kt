@@ -1085,11 +1085,50 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
+    private fun confirmLeaveQuiz() {
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Leave the quiz?")
+            .setMessage("You can go back to the Home screen. The Admin's live quiz will continue, but this app will stop showing its questions until you join again.")
+            .setNegativeButton("Stay in Quiz", null)
+            .setPositiveButton("Go Back") { _, _ ->
+                questionTimer?.cancel()
+                quizRegistration?.remove()
+                questionRegistration?.remove()
+                timingRegistration?.remove()
+                quizRegistration = null
+                questionRegistration = null
+                timingRegistration = null
+                currentQuestionIndex = -1
+                activeQuestion = emptyMap()
+                questionStartedMs = 0L
+                showHome()
+            }
+            .show()
+    }
+
     private fun renderLiveQuestion() {
         renderPage("quiz-live")
-        content.addView(text(activeQuiz["name"].stringOr("Quiz Competition"), 24f, navy, true).apply {
-            setPadding(0, dp(1), 0, dp(12))
-        })
+        val quizHeader = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val backButton = TextView(this).apply {
+            text = "‹"
+            textSize = 34f
+            gravity = Gravity.CENTER
+            setTextColor(navy)
+            background = rounded(paper, 15, 0xFFE7E0D4.toInt())
+            isClickable = true
+            contentDescription = "Back"
+            setOnClickListener { confirmLeaveQuiz() }
+        }
+        quizHeader.addView(backButton, LinearLayout.LayoutParams(dp(44), dp(44)))
+        quizHeader.addView(text(activeQuiz["name"].stringOr("Quiz Competition"), 22f, navy, true).apply {
+            setPadding(dp(12), dp(1), 0, dp(8))
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+        content.addView(quizHeader, margin(-1, 0, 0, 0, 0, 12))
 
         val timerCard = panel(paleOrange)
         timerCard.orientation = LinearLayout.HORIZONTAL
@@ -1704,10 +1743,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        if (currentPage == "quiz-live") {
-            toast("Please remain on the quiz screen until the Admin ends the competition.")
-        } else {
-            super.onBackPressed()
+        when (currentPage) {
+            "quiz-live" -> confirmLeaveQuiz()
+            "home" -> super.onBackPressed()
+            else -> showHome()
         }
     }
 
