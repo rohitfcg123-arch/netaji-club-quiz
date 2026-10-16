@@ -121,12 +121,6 @@
   const observer=new MutationObserver(records=>{
     for(const record of records) {
       if(record.type==="childList") record.addedNodes.forEach(node=>{if(node.nodeType===1 && node.id!=="ncUiLanguageSwitcher") translateElement(node); else if(node.nodeType===3) translateElement(node.parentElement);});
-      else if(record.type==="characterData" && record.target.parentElement && !excluded(record.target.parentElement)) {
-        const node=record.target;
-        if(node.__ncLangOriginal===undefined) node.__ncLangOriginal=node.nodeValue;
-        const next=translateText(node.__ncLangOriginal,language);
-        if(node.nodeValue!==next) node.nodeValue=next;
-      }
     }
   });
   observer.observe(document.documentElement,{subtree:true,childList:true,characterData:true});
