@@ -195,11 +195,6 @@ class MainActivity : AppCompatActivity() {
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
         })
-        brand.addView(text("WE SERVE • WE CARE • WE EMPOWER", 8.5f, muted, true).apply {
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-            setPadding(0, dp(3), 0, 0)
-        })
         header.addView(brand, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(10) })
 
         val noticeBell = FrameLayout(this).apply {
@@ -461,12 +456,7 @@ class MainActivity : AppCompatActivity() {
         })
         copy.addView(text("Education  |  Environment\nSocial Welfare  |  Health\nEmpowerment", 11.5f, ink))
         hero.addView(copy, FrameLayout.LayoutParams(dp(220), -1, Gravity.TOP or Gravity.START))
-        content.addView(hero, margin(-1, dp(242), 0, 0, 0, 18))
-
-        content.addView(sectionHeading("Explore", "About the Trust") {
-            showDetail("About Us", contactInfo["about"].stringOr("Netaji Social & Welfare Trust works to support education, environmental care, social welfare, health and community empowerment.") +
-                "\n\nMission\n" + contactInfo["mission"].stringOr("To serve people and build a stronger, healthier and more inclusive community."))
-        }, margin(-1, -2, 0, 0, 0, 10))
+        content.addView(hero, margin(-1, dp(205), 0, 0, 0, 14))
 
         val row1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         row1.addView(actionCard("▤", "Latest Notices", "Stay updated", paleBlue) { showNotices() },
@@ -491,31 +481,9 @@ class MainActivity : AppCompatActivity() {
             content.addView(pinnedNoticeCard(pinned), margin(-1, -2, 0, 0, 0, 14))
         }
 
-        content.addView(sectionHeading("Upcoming Events", "View all") { showEvents() }, margin(-1, -2, 0, 2, 0, 8))
-        val upcoming = events.take(2)
-        if (upcoming.isEmpty()) {
-            content.addView(emptyCard("Upcoming events will be listed here when published."))
-        } else {
-            upcoming.forEach { event ->
-                val meta = listOf(
-                    event["dateText"].stringOr(""),
-                    event["location"].stringOr("")
-                ).filter { it.isNotBlank() }.joinToString(" • ")
-                content.addView(contentCard(
-                    event["title"].stringOr("Event"),
-                    event["description"].stringOr(""),
-                    meta.ifBlank { "Upcoming event" },
-                    "📅"
-                ) { showEventDetail(event) }, margin(-1, -2, 0, 0, 0, 9))
-            }
-        }
-
-        content.addView(space(3))
-        content.addView(primaryButton("🏆  Take Part in a Quiz") { openQuiz() }, margin(-1, dp(54), 0, 8, 0, 8))
-        content.addView(text("Quiz & competitions use the existing Netaji Club competition system.", 11.5f, muted).apply {
-            gravity = Gravity.CENTER
-            setPadding(dp(8), 0, dp(8), dp(8))
-        })
+        // Keep the home screen aligned with the supplied design reference:
+        // four quick-action tiles followed by the pinned notice. Events and quiz
+        // remain available from the navigation/Profile area.
     }
 
     private fun showNotices() {
