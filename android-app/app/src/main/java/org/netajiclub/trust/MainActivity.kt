@@ -185,7 +185,7 @@ class MainActivity : AppCompatActivity() {
             setBackgroundColor(paper)
             elevation = dp(3).toFloat()
         }
-        header.addView(TrustLogoView(this), LinearLayout.LayoutParams(dp(56), dp(56)))
+        header.addView(ImageView(this).apply {\n            setImageResource(R.drawable.trust_logo)\n            scaleType = ImageView.ScaleType.FIT_CENTER\n            contentDescription = "Netaji Social and Welfare Trust official logo"\n        }, LinearLayout.LayoutParams(dp(56), dp(56)))
         val brand = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         brand.addView(text("Netaji Social & Welfare Trust", 16f, navy, true).apply {
             maxLines = 1
@@ -1784,18 +1784,33 @@ private class TrustHeroArtworkView(context: Context) : View(context) {
         if (w <= 0f || h <= 0f) return
         canvas.drawRoundRect(RectF(0f, 0f, w, h), dp(24).toFloat(), dp(24).toFloat(), backgroundPaint)
 
-        orangeStroke.strokeWidth = h * .055f
-        greenStroke.strokeWidth = h * .055f
-        val orangeWave = Path().apply {
-            moveTo(w * .40f, h * .20f)
-            cubicTo(w * .64f, h * .01f, w * .73f, h * .25f, w * 1.08f, h * .08f)
+        // Correct Indian tricolour: saffron, white, green with a navy Ashoka Chakra.
+        val flagLeft = w * .43f
+        val flagTop = h * .075f
+        val flagRight = w * .985f
+        val flagBottom = h * .385f
+        val flagBand = (flagBottom - flagTop) / 3f
+        val flagSaffron = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFF9933.toInt(); style = Paint.Style.FILL }
+        val flagWhite = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt(); style = Paint.Style.FILL }
+        val flagGreen = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF138808.toInt(); style = Paint.Style.FILL }
+        val chakra = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF000080.toInt(); style = Paint.Style.STROKE; strokeWidth = h * .006f }
+        canvas.drawRect(flagLeft, flagTop, flagRight, flagTop + flagBand, flagSaffron)
+        canvas.drawRect(flagLeft, flagTop + flagBand, flagRight, flagTop + 2f * flagBand, flagWhite)
+        canvas.drawRect(flagLeft, flagTop + 2f * flagBand, flagRight, flagBottom, flagGreen)
+        val chakraX = (flagLeft + flagRight) / 2f
+        val chakraY = flagTop + 1.5f * flagBand
+        val chakraR = flagBand * .34f
+        canvas.drawCircle(chakraX, chakraY, chakraR, chakra)
+        canvas.drawCircle(chakraX, chakraY, h * .004f, chakra.apply { style = Paint.Style.FILL })
+        for (spoke in 0 until 24) {
+            val angle = spoke * Math.PI / 12.0
+            canvas.drawLine(
+                chakraX, chakraY,
+                chakraX + kotlin.math.cos(angle).toFloat() * chakraR,
+                chakraY + kotlin.math.sin(angle).toFloat() * chakraR,
+                chakra
+            )
         }
-        val greenWave = Path().apply {
-            moveTo(w * .34f, h * .61f)
-            cubicTo(w * .58f, h * .37f, w * .73f, h * .75f, w * 1.08f, h * .46f)
-        }
-        canvas.drawPath(orangeWave, orangeStroke)
-        canvas.drawPath(greenWave, greenStroke)
 
         // Distant community silhouettes create a subtle illustrated footer.
         for (i in 0 until 15) {
