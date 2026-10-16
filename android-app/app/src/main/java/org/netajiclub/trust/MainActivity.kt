@@ -443,16 +443,6 @@ class MainActivity : AppCompatActivity() {
             elevation = dp(3).toFloat()
         }
         hero.addView(TrustHeroArtworkView(this), FrameLayout.LayoutParams(-1, -1))
-        val copy = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(17), dp(18), 0, dp(14))
-        }
-        copy.addView(text("Serving our\ncommunity,\ntogether", 24f, navy, true).apply {
-            setLineSpacing(dp(1).toFloat(), 1f)
-            setPadding(0, dp(5), 0, dp(8))
-        })
-        copy.addView(text("Education  |  Environment\nSocial Welfare  |  Health\nEmpowerment", 11.5f, ink))
-        hero.addView(copy, FrameLayout.LayoutParams(dp(220), -1, Gravity.TOP or Gravity.START))
         content.addView(hero, margin(-1, dp(205), 0, 0, 0, 14))
 
         val row1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
