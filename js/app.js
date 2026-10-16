@@ -16,6 +16,7 @@ const hostMode = params.get("host") === "1";
 const requestedCode = (params.get("code") || "").trim().toUpperCase();
 let activeCode = "", playerName = "", quizState = null, unsubQuiz = null, unsubQuestion = null;
 let score = 0, correctCount = 0, answered = false, currentUser = null, currentIndex = -1, questionShownAt = 0, activeQuestionData = null;
+let questionListenerGeneration = 0;
 let selectedLanguage = localStorage.getItem("ncQuizLanguage") || "hi";
 const languageNames = { hi: "हिंदी", en: "English", bn: "বাংলা" };
 let globalBranding = normalizeBranding(BRANDING_DEFAULTS);
@@ -303,10 +304,25 @@ async function verifyHostAdmin(user) {
   hostMessage("", "");
 }
 
+function isPlaceholderQuestion(value) {
+  const text = String(value || "").trim().toLowerCase().replace(/\\s+/g, " ");
+  return !text || text.includes("the quiz is about to start") ||
+    text.includes("please stay on this screen") ||
+    text.includes("क्विज़ शुरू होने वाला है") ||
+    text.includes("কুইজ শুরু হতে চলেছে");
+}
 function localizedQuestion(q) {
+  const base = { question: q?.question || "", options: q?.options || [] };
   const t = q && q.translations && q.translations[selectedLanguage];
-  if (t && typeof t.question === "string" && Array.isArray(t.options) && t.options.length === 4) return t;
-  return { question: q?.question || "", options: q?.options || [] };
+  if (t && typeof t.question === "string" && Array.isArray(t.options) && t.options.length === 4) {
+    if (!isPlaceholderQuestion(t.question)) return t;
+    if (!isPlaceholderQuestion(base.question)) return { question: base.question, options: t.options };
+    for (const lang of ["hi", "en", "bn"]) {
+      const candidate = q?.translations?.[lang];
+      if (candidate && !isPlaceholderQuestion(candidate.question) && Array.isArray(candidate.options) && candidate.options.length === 4) return candidate;
+    }
+  }
+  return base;
 }
 const languageSelect = $("quizLanguage");
 if (languageSelect) {
@@ -435,12 +451,16 @@ function startListening(code) {
     const incomingQuizState = snap.data();
     const previousQuizStatus = quizState?.status || "";
     const previousQuizRunId = String(quizState?.runId || "");
-    // Countdown-to-live transition must force a fresh question subscription.
-    // This prevents the Review screen retaining a stale question/timer state.
-    if (hostMode && incomingQuizState.status === "live" &&
-        (previousQuizStatus !== "live" || String(incomingQuizState.runId || "") !== previousQuizRunId)) {
+    // A new run must reset player AND host state, not only the host/review screen.
+    // Old question listeners can otherwise paint a stale question over Waiting/Starting.
+    const incomingRunId = String(incomingQuizState.runId || "");
+    if ((incomingQuizState.status === "live" &&
+         (previousQuizStatus !== "live" || incomingRunId !== previousQuizRunId)) ||
+        incomingRunId !== previousQuizRunId) {
+      questionListenerGeneration++;
       activeQuestionData = null;
       currentIndex = -1;
+      answered = false;
       if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
     }
     quizState = incomingQuizState;
@@ -465,17 +485,32 @@ function startListening(code) {
       return;
     }
     if (quizState.status === "starting") {
+      questionListenerGeneration++;
+      if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
+      activeQuestionData = null;
+      currentIndex = -1;
+      answered = false;
       $("status").textContent = "Starting";
       $("question").textContent = "क्विज़ शुरू होने वाला है…";
       clearOptions();
+      $("feedback").textContent = "";
       $("timer").textContent = Math.max(0, Math.ceil((Number(quizState.startAt || 0) - Date.now()) / 1000));
       if (hostMode) { renderHostWaiting("Quiz starts in a moment…"); $("status").textContent = "STARTING"; updateTimer(); }
       return;
     }
-    if (quizState.status !== "live") { waiting(activeBranding?.text?.waitingText || "Admin के Quiz शुरू करने का इंतज़ार है"); return; }
+    if (quizState.status !== "live") {
+      questionListenerGeneration++;
+      if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
+      activeQuestionData = null;
+      currentIndex = -1;
+      answered = false;
+      waiting(activeBranding?.text?.waitingText || "Admin के Quiz शुरू करने का इंतज़ार है");
+      if (hostMode) renderHostWaiting("WAITING FOR ADMIN");
+      return;
+    }
 
     const idx = Number(quizState.currentIndex || 0);
-    if (idx !== currentIndex || (hostMode && !activeQuestionData)) {
+    if (idx !== currentIndex || !activeQuestionData) {
       if (hostMode) {
         hostBaseRanks = new Map(hostCurrentRankByUid);
         hostHasRankBaseline = hostBaseRanks.size > 0;
@@ -484,8 +519,19 @@ function startListening(code) {
       }
       currentIndex = idx;
       answered = false;
+      activeQuestionData = null;
+      const listenerGeneration = ++questionListenerGeneration;
       if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
+      if (!hostMode) {
+        $("status").textContent = "LIVE";
+        $("question").textContent = "प्रश्न लोड हो रहा है…";
+        clearOptions();
+      }
       unsubQuestion = onSnapshot(doc(db, "quizzes", activeCode, "questions", String(idx)), async qSnap => {
+        if (listenerGeneration !== questionListenerGeneration ||
+            currentIndex !== idx ||
+            quizState?.status !== "live" ||
+            Number(quizState?.currentIndex || 0) !== idx) return;
         if (!qSnap.exists()) { waiting("प्रश्न लोड हो रहा है…"); return; }
         activeQuestionData = qSnap.data();
         const q = localizedQuestion(activeQuestionData);
