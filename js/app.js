@@ -26,6 +26,26 @@ function refreshActiveBranding() {
   applyBranding(activeBranding);
 }
 
+// Warn before leaving the player/live screen with the device/browser Back button.
+let backWarningRunKey = "";
+function armQuizBackWarning(runId) {
+  const key = String(activeCode || requestedCode || "quiz") + ":" + String(runId || "default");
+  if (backWarningRunKey === key) return;
+  backWarningRunKey = key;
+  try { history.pushState({ ncQuizBackWarning: true, key }, "", location.href); }
+  catch (error) { console.warn("Back warning history state unavailable", error); }
+}
+window.addEventListener("popstate", () => {
+  if (!quizState || !["starting", "live"].includes(quizState.status)) return;
+  const leave = window.confirm("Quiz shuru ho chuka hai. Kya aap quiz se bahar jaana chahte hain?");
+  if (!leave) {
+    try { history.pushState({ ncQuizBackWarning: true, key: backWarningRunKey }, "", location.href); }
+    catch (error) { console.warn("Could not restore quiz history state", error); }
+  } else {
+    backWarningRunKey = "";
+  }
+});
+
 
 let hostAdminVerified = false;
 let hostDataCode = "";
@@ -464,6 +484,7 @@ function startListening(code) {
       if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
     }
     quizState = incomingQuizState;
+    if (["starting", "live"].includes(quizState.status)) armQuizBackWarning(quizState.runId);
     refreshActiveBranding();
     if (hostMode) {
       const newRunId = String(quizState.runId || "");
