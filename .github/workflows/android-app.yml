@@ -41,6 +41,10 @@ jobs:
           else
             echo "apksigner was not found; inspect the APK signing certificate with Android SDK tools." > android-app/debug-signing-certificate.txt
           fi
+          grep -E "Signer #1 certificate SHA-1 digest:|Signer #1 certificate SHA-256 digest:" android-app/debug-signing-certificate.txt | sed -E 's/.*SHA-1 digest: /SHA-1: /; s/.*SHA-256 digest: /SHA-256: /' > android-app/SHA1-FINGERPRINT.txt
+          if ! grep -q "SHA-1:" android-app/SHA1-FINGERPRINT.txt; then
+            echo "SHA-1 fingerprint was not found. See debug-signing-certificate.txt." >> android-app/SHA1-FINGERPRINT.txt
+          fi
 
       - name: Upload installable APK and setup fingerprint
         uses: actions/upload-artifact@v4
@@ -49,5 +53,6 @@ jobs:
           path: |
             android-app/app/build/outputs/apk/debug/app-debug.apk
             android-app/debug-signing-certificate.txt
+            android-app/SHA1-FINGERPRINT.txt
           if-no-files-found: error
           retention-days: 30
