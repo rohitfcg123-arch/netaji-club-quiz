@@ -434,112 +434,211 @@ class MainActivity : AppCompatActivity() {
 
     private fun showHome() {
         renderPage("home")
-        val hero = panel()
-        hero.addView(text("Serving our community, together", 26f, navy, true).apply {
-            setPadding(0, dp(2), 0, dp(8))
-        })
-        hero.addView(text("Education  |  Environment  |  Social Welfare  |  Health  |  Empowerment", 13f, ink))
-        hero.addView(tricolorBar())
-        hero.addView(space(12))
-        hero.addView(text("Welcome to Netaji Social & Welfare Trust", 15f, navy, true))
-        hero.addView(text("Community care, learning and service — bringing people together.", 13f, muted).apply {
-            setPadding(0, dp(5), 0, 0)
-        })
-        content.addView(hero, margin(-1, -2, 0, 0, 0, 12))
+        content.addView(space(2))
 
-        content.addView(text("Explore", 19f, navy, true), margin(-1, -2, 2, 4, 0, 8))
+        val hero = FrameLayout(this).apply {
+            background = rounded(paper, 26, 0xFFE8DCC7.toInt())
+            clipToOutline = true
+            elevation = dp(3).toFloat()
+        }
+        hero.addView(TrustHeroArtworkView(this), FrameLayout.LayoutParams(-1, -1))
+        val copy = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(17), dp(18), 0, dp(14))
+        }
+        copy.addView(text("NETAJI SOCIAL & WELFARE TRUST", 8.5f, saffron, true).apply {
+            maxLines = 1
+        })
+        copy.addView(text("Serving our\ncommunity,\ntogether", 24f, navy, true).apply {
+            setLineSpacing(dp(1).toFloat(), 1f)
+            setPadding(0, dp(5), 0, dp(8))
+        })
+        copy.addView(text("Education  |  Environment\nSocial Welfare  |  Health\nEmpowerment", 11.5f, ink))
+        hero.addView(copy, FrameLayout.LayoutParams(dp(220), -1, Gravity.TOP or Gravity.START))
+        content.addView(hero, margin(-1, dp(242), 0, 0, 0, 18))
+
+        content.addView(sectionHeading("Explore", "About the Trust") {
+            showDetail("About Us", contactInfo["about"].stringOr("Netaji Social & Welfare Trust works to support education, environmental care, social welfare, health and community empowerment.") +
+                "\n\nMission\n" + contactInfo["mission"].stringOr("To serve people and build a stronger, healthier and more inclusive community."))
+        }, margin(-1, -2, 0, 0, 0, 10))
+
         val row1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         row1.addView(actionCard("▤", "Latest Notices", "Stay updated", paleBlue) { showNotices() },
             LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(6) })
         row1.addView(actionCard("▣", "Upcoming Events", "Join us", paleOrange) { showEvents() },
             LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(6) })
         content.addView(row1, margin(-1, -2, 0, 0, 0, 10))
+
         val row2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         row2.addView(actionCard("♧", "Our Activities", "See our work", paleGreen) { showActivities() },
             LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(6) })
-        row2.addView(actionCard("♡", "Volunteer With Us", "Make a difference", 0xFFFFE8D5.toInt()) { showDetail("Volunteer With Us", "Contact the Trust using the Contact Us section to learn about volunteering opportunities.") },
-            LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(6) })
-        content.addView(row2, margin(-1, -2, 0, 0, 0, 16))
+        row2.addView(actionCard("♡", "Volunteer With Us", "Make a difference", 0xFFFFE8D5.toInt()) {
+            showDetail("Volunteer With Us", "Contact the Trust using the Contact Us section to learn about volunteering opportunities.")
+        }, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(6) })
+        content.addView(row2, margin(-1, -2, 0, 0, 0, 18))
 
         content.addView(sectionHeading("Pinned Notice", "View all") { showNotices() }, margin(-1, -2, 0, 0, 0, 8))
         val pinned = notices.firstOrNull { it["pinned"] == true } ?: notices.firstOrNull()
         if (pinned == null) {
             content.addView(emptyCard("No notices published yet. New notices from the Trust will appear here."))
         } else {
-            content.addView(contentCard(
-                title = pinned["title"].stringOr("Notice"),
-                body = pinned["body"].stringOr(""),
-                meta = pinned["category"].stringOr("Notice"),
-                icon = "📣",
-                click = { showNoticeDetail(pinned) }
-            ), margin(-1, -2, 0, 0, 0, 14))
+            content.addView(pinnedNoticeCard(pinned), margin(-1, -2, 0, 0, 0, 14))
         }
 
-        content.addView(sectionHeading("Upcoming Events", "View all") { showEvents() }, margin(-1, -2, 0, 4, 0, 8))
+        content.addView(sectionHeading("Upcoming Events", "View all") { showEvents() }, margin(-1, -2, 0, 2, 0, 8))
         val upcoming = events.take(2)
-        if (upcoming.isEmpty()) content.addView(emptyCard("Upcoming events will be listed here when published."))
-        else upcoming.forEach { content.addView(contentCard(
-            it["title"].stringOr("Event"),
-            it["description"].stringOr(""),
-            it["dateText"].stringOr(it["location"].stringOr("Event")),
-            "📅"
-        ) { showEventDetail(it) }, margin(-1, -2, 0, 0, 0, 8)) }
+        if (upcoming.isEmpty()) {
+            content.addView(emptyCard("Upcoming events will be listed here when published."))
+        } else {
+            upcoming.forEach { event ->
+                val meta = listOf(
+                    event["dateText"].stringOr(""),
+                    event["location"].stringOr("")
+                ).filter { it.isNotBlank() }.joinToString(" • ")
+                content.addView(contentCard(
+                    event["title"].stringOr("Event"),
+                    event["description"].stringOr(""),
+                    meta.ifBlank { "Upcoming event" },
+                    "📅"
+                ) { showEventDetail(event) }, margin(-1, -2, 0, 0, 0, 9))
+            }
+        }
 
-        content.addView(space(8))
-        content.addView(primaryButton("Take Part in a Quiz  →") { openQuiz() }, margin(-1, dp(52), 0, 0, 0, 10))
-        content.addView(text("Quiz & competitions are powered by the same Netaji Club competition system.", 12f, muted))
+        content.addView(space(3))
+        content.addView(primaryButton("🏆  Take Part in a Quiz") { openQuiz() }, margin(-1, dp(54), 0, 8, 0, 8))
+        content.addView(text("Quiz & competitions use the existing Netaji Club competition system.", 11.5f, muted).apply {
+            gravity = Gravity.CENTER
+            setPadding(dp(8), 0, dp(8), dp(8))
+        })
     }
 
     private fun showNotices() {
         renderPage("notices")
-        content.addView(text("Notices & Announcements", 24f, navy, true))
-        content.addView(text("Stay informed about our latest activities, events and updates.", 13f, muted), margin(-1, -2, 0, 4, 0, 14))
+        addPageHeading("Notices & Announcements", "Stay informed about our latest activities, events and updates.")
+
+        val searchShell = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = rounded(paper, 17, 0xFFE4E8EE.toInt())
+            setPadding(dp(13), 0, dp(12), 0)
+            elevation = dp(1).toFloat()
+        }
+        searchShell.addView(text("⌕", 25f, muted, true).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(30), dp(48)))
         val search = EditText(this).apply {
             hint = "Search notices..."
             isSingleLine = true
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-            background = rounded(paper, 16, 0xFFE5E7EB.toInt())
+            textSize = 14f
+            setTextColor(navy)
+            setHintTextColor(muted)
+            setPadding(dp(4), 0, dp(4), 0)
+            setBackgroundColor(0x00000000)
         }
-        content.addView(search, margin(-1, dp(48), 0, 0, 0, 12))
+        searchShell.addView(search, LinearLayout.LayoutParams(0, dp(48), 1f))
+        content.addView(searchShell, margin(-1, dp(50), 0, 1, 0, 12))
+
+        var activeCategory = "All"
+        var activeQuery = ""
+        val categories = listOf("All") + notices.map { it["category"].stringOr("General") }
+            .filter { it.isNotBlank() }
+            .distinctBy { it.lowercase(Locale.ROOT) }
+            .filterNot { it.equals("All", true) }
+        val chipScroller = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+        val chipRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        chipScroller.addView(chipRow)
+        content.addView(chipScroller, margin(-1, dp(42), 0, 0, 0, 12))
+
         val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         content.addView(list)
-        fun fill(filter: String) {
+
+        fun fill() {
             list.removeAllViews()
-            val matching = notices.filter {
-                it["title"].stringOr("").contains(filter, true) ||
-                    it["body"].stringOr("").contains(filter, true) ||
-                    it["category"].stringOr("").contains(filter, true)
+            val matching = notices.filter { notice ->
+                val searchable = notice["title"].stringOr("") + " " +
+                    notice["body"].stringOr("") + " " + notice["category"].stringOr("")
+                searchable.contains(activeQuery, true) &&
+                    (activeCategory == "All" || notice["category"].stringOr("General").equals(activeCategory, true))
             }
-            if (matching.isEmpty()) list.addView(emptyCard(if (filter.isBlank()) "No notices published yet." else "No matching notices found."))
-            else matching.forEach { n ->
-                list.addView(contentCard(n["title"].stringOr("Notice"), n["body"].stringOr(""), dateLabel(n["publishedAt"]), "📢") { showNoticeDetail(n) },
-                    margin(-1, -2, 0, 0, 0, 10))
+            if (matching.isEmpty()) {
+                list.addView(emptyCard(if (activeQuery.isBlank() && activeCategory == "All")
+                    "No notices published yet. New announcements will appear here."
+                else "No notices match the current search or category."))
+            } else {
+                matching.forEach { notice ->
+                    val meta = listOf(
+                        dateLabel(notice["publishedAt"]),
+                        notice["category"].stringOr("General")
+                    ).filter { it.isNotBlank() }.joinToString(" • ")
+                    list.addView(contentCard(
+                        notice["title"].stringOr("Notice"),
+                        notice["body"].stringOr(""),
+                        meta,
+                        if (notice["pinned"] == true) "📌" else "📢"
+                    ) { showNoticeDetail(notice) }, margin(-1, -2, 0, 0, 0, 10))
+                }
             }
         }
-        fill("")
+
+        fun buildChips() {
+            chipRow.removeAllViews()
+            categories.forEach { category ->
+                val selected = category.equals(activeCategory, true)
+                val chip = TextView(this).apply {
+                    text = category
+                    textSize = 12f
+                    typeface = if (selected) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+                    setTextColor(if (selected) paper else navy)
+                    gravity = Gravity.CENTER
+                    setPadding(dp(15), 0, dp(15), 0)
+                    background = rounded(if (selected) navy else 0xFFF0F3F8.toInt(), 20)
+                    isClickable = true
+                    setOnClickListener {
+                        activeCategory = category
+                        buildChips()
+                        fill()
+                    }
+                }
+                chipRow.addView(chip, LinearLayout.LayoutParams(-2, dp(36)).apply { rightMargin = dp(7) })
+            }
+        }
         search.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = fill(s?.toString().orEmpty())
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                activeQuery = s?.toString().orEmpty()
+                fill()
+            }
             override fun afterTextChanged(s: android.text.Editable?) {}
         })
+        buildChips()
+        fill()
     }
 
     private fun showEvents() {
         renderPage("events")
-        content.addView(text("Upcoming Events", 24f, navy, true))
-        content.addView(text("Community activities and events", 13f, muted), margin(-1, -2, 0, 2, 0, 12))
-        if (events.isEmpty()) content.addView(emptyCard("No events have been announced yet. Please check the Notices section later."))
-        else events.forEach { e ->
-            content.addView(contentCard(e["title"].stringOr("Event"), e["description"].stringOr(""),
-                listOf(e["dateText"].stringOr(""), e["location"].stringOr("")).filter { it.isNotBlank() }.joinToString(" • "),
-                "📅") { showEventDetail(e) }, margin(-1, -2, 0, 0, 0, 10))
+        addPageHeading("Upcoming Events", "Community activities, celebrations and programmes.")
+        if (events.isEmpty()) {
+            content.addView(emptyCard("No events have been announced yet. Please check the Notices section later."))
+        } else {
+            events.forEach { event ->
+                val meta = listOf(event["dateText"].stringOr(""), event["location"].stringOr(""))
+                    .filter { it.isNotBlank() }.joinToString(" • ")
+                content.addView(contentCard(
+                    event["title"].stringOr("Event"),
+                    event["description"].stringOr(""),
+                    meta.ifBlank { "Upcoming event" },
+                    "📅"
+                ) { showEventDetail(event) }, margin(-1, -2, 0, 0, 0, 11))
+            }
         }
+        content.addView(secondaryButton("Back to Home") { showHome() }, margin(-1, dp(48), 0, 8, 0, 8))
     }
 
     private fun showActivities() {
         renderPage("activities")
-        content.addView(text("Our Activities", 24f, navy, true))
-        content.addView(text("Working for a better and stronger community.", 13f, muted), margin(-1, -2, 0, 2, 0, 12))
+        addPageHeading("Our Activities", "Working for a better and stronger community.")
+
         if (activities.isEmpty()) {
             val categories = listOf(
                 Triple("📘", "Education Support", "Helping students for a brighter future."),
@@ -550,65 +649,109 @@ class MainActivity : AppCompatActivity() {
             categories.chunked(2).forEach { pair ->
                 val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
                 pair.forEach { item ->
-                    row.addView(actionCard(item.first, item.second, item.third, paleGreen) {
+                    row.addView(actionCard(item.first, item.second, item.third,
+                        when (item.second) {
+                            "Environment Drive" -> paleGreen
+                            "Health & Welfare" -> 0xFFFFE8EC.toInt()
+                            "Community Empowerment" -> 0xFFFFF0D8.toInt()
+                            else -> paleBlue
+                        }) {
                         showDetail(item.second, "Activity details and updates will appear here when published by the Trust admin.")
-                    }, LinearLayout.LayoutParams(0, -2, 1f).apply { if (row.childCount == 0) rightMargin = dp(6) else leftMargin = dp(6) })
+                    }, LinearLayout.LayoutParams(0, -2, 1f).apply {
+                        if (row.childCount == 0) rightMargin = dp(6) else leftMargin = dp(6)
+                    })
                 }
                 content.addView(row, margin(-1, -2, 0, 0, 0, 10))
             }
             content.addView(emptyCard("Detailed activity updates will appear here when published."))
         } else {
-            activities.forEach { a ->
-                content.addView(contentCard(a["title"].stringOr("Activity"), a["description"].stringOr(""),
-                    a["category"].stringOr("Community"), "🌿") { showActivityDetail(a) },
-                    margin(-1, -2, 0, 0, 0, 10))
+            activities.chunked(2).forEach { pair ->
+                val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.TOP }
+                pair.forEach { activity ->
+                    row.addView(activityFeatureCard(activity), LinearLayout.LayoutParams(0, -2, 1f).apply {
+                        if (row.childCount == 0) rightMargin = dp(6) else leftMargin = dp(6)
+                    })
+                }
+                if (pair.size == 1) row.addView(View(this), LinearLayout.LayoutParams(0, dp(1), 1f).apply { leftMargin = dp(6) })
+                content.addView(row, margin(-1, -2, 0, 0, 0, 12))
             }
         }
-        content.addView(primaryButton("Become a Volunteer") { showDetail("Volunteer With Us", "Use Contact Us to ask the Trust about current volunteering opportunities.") },
-            margin(-1, dp(52), 0, 10, 0, 8))
+        content.addView(primaryButton("🤝  Become a Volunteer") {
+            showDetail("Volunteer With Us", "Use Contact Us to ask the Trust about current volunteering opportunities.")
+        }, margin(-1, dp(54), 0, 6, 0, 8))
     }
 
     private fun showProfile() {
         renderPage("profile")
-        val profileCard = panel()
-        profileCard.gravity = Gravity.CENTER_HORIZONTAL
-        profileCard.addView(TrustLogoView(this), LinearLayout.LayoutParams(dp(100), dp(100)))
-        profileCard.addView(text("Netaji Social & Welfare Trust", 21f, navy, true).apply { gravity = Gravity.CENTER; setPadding(0, dp(8), 0, dp(4)) })
-        profileCard.addView(text("We Serve • We Care • We Empower", 12f, muted).apply { gravity = Gravity.CENTER })
-        content.addView(profileCard, margin(-1, -2, 0, 0, 0, 12))
+        val profileCard = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(16), dp(16), dp(16), dp(16))
+            background = rounded(paper, 22, 0xFFE5DCCB.toInt())
+            elevation = dp(2).toFloat()
+        }
+        profileCard.addView(TrustLogoView(this), LinearLayout.LayoutParams(dp(66), dp(66)))
+        val profileCopy = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), 0, 0, 0)
+        }
+        profileCopy.addView(text("Explore the Trust", 21f, navy, true))
+        profileCopy.addView(text("Learn about our work and get involved.", 12f, muted).apply { setPadding(0, dp(4), 0, 0) })
+        profileCard.addView(profileCopy, LinearLayout.LayoutParams(0, -2, 1f))
+        content.addView(profileCard, margin(-1, -2, 0, 0, 0, 14))
 
-        content.addView(text("Explore the Trust", 21f, navy, true), margin(-1, -2, 0, 0, 0, 8))
         val options = listOf(
             Triple("ℹ", "About Us", "Our vision, mission and journey"),
-            Triple("♧", "Members", "Team and committee members"),
+            Triple("♧", "Members", "Our team and committee members"),
             Triple("♡", "Donate / Support", "Contribute to a better community"),
             Triple("☎", "Contact Us", "Get in touch with us"),
             Triple("▧", "Gallery", "Photos and moments from our events"),
             Triple("🏆", "Quiz & Competitions", "Participate in our quizzes and contests")
         )
-        options.chunked(2).forEach { pair ->
-            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            pair.forEach { item ->
-                row.addView(actionCard(item.first, item.second, item.third, if (row.childCount == 0) paleBlue else paleGreen) {
+        options.chunked(2).forEachIndexed { rowIndex, pair ->
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.TOP }
+            pair.forEachIndexed { itemIndex, item ->
+                val tint = when (rowIndex * 2 + itemIndex) {
+                    0 -> 0xFFFFF0D8.toInt()
+                    1 -> paleGreen
+                    2 -> 0xFFFFE8EC.toInt()
+                    3 -> paleBlue
+                    4 -> 0xFFF0EAFE.toInt()
+                    else -> 0xFFFFF0D8.toInt()
+                }
+                row.addView(actionCard(item.first, item.second, item.third, tint) {
                     when (item.second) {
                         "Quiz & Competitions" -> openQuiz()
-                        "About Us" -> showDetail("About Us", contactInfo["about"].stringOr("Netaji Social & Welfare Trust works to support education, environmental care, social welfare, health and community empowerment.") + "\n\nMission\n" + contactInfo["mission"].stringOr("To serve people and build a stronger, healthier and more inclusive community."))
+                        "About Us" -> showDetail("About Us",
+                            contactInfo["about"].stringOr("Netaji Social & Welfare Trust works to support education, environmental care, social welfare, health and community empowerment.") +
+                                "\n\nMission\n" + contactInfo["mission"].stringOr("To serve people and build a stronger, healthier and more inclusive community."))
                         "Members" -> showDetail("Members", "The Trust's member and committee directory will appear here when it is published.")
                         "Donate / Support" -> showDonation()
                         "Contact Us" -> showContact()
                         "Gallery" -> showDetail("Gallery", "Photos from Trust programmes and community events will appear here when published.")
                         else -> showDetail(item.second, item.third)
                     }
-                }, LinearLayout.LayoutParams(0, -2, 1f).apply { if (row.childCount == 0) rightMargin = dp(6) else leftMargin = dp(6) })
+                }, LinearLayout.LayoutParams(0, -2, 1f).apply {
+                    if (row.childCount == 0) rightMargin = dp(6) else leftMargin = dp(6)
+                })
             }
             content.addView(row, margin(-1, -2, 0, 0, 0, 10))
         }
 
+        val footer = panel(0xFFFFF1D8.toInt())
+        footer.addView(text("Netaji Social & Welfare Trust", 15f, navy, true))
+        footer.addView(text("We serve • We care • We empower", 12f, muted).apply { setPadding(0, dp(4), 0, dp(10)) })
+        footer.addView(tricolorBar())
+        content.addView(footer, margin(-1, -2, 0, 7, 0, 14))
+
         if (currentUser == null) {
-            content.addView(primaryButton("Sign in to take a quiz") { openQuiz() }, margin(-1, dp(52), 0, 8, 0, 8))
+            content.addView(primaryButton("Sign in to take a quiz") { openQuiz() }, margin(-1, dp(52), 0, 0, 0, 8))
         } else {
-            content.addView(text("Signed in as " + (currentUser?.email ?: "Google account"), 12f, muted), margin(-1, -2, 0, 8, 0, 8))
-            content.addView(secondaryButton("Log out") { logout() }, margin(-1, dp(48), 0, 0, 0, 8))
+            content.addView(panel().apply {
+                addView(text("Signed in", 12f, muted, true))
+                addView(text(currentUser?.email ?: "Google account", 13f, navy, true).apply { setPadding(0, dp(4), 0, dp(8)) })
+                addView(secondaryButton("Log out") { logout() }, LinearLayout.LayoutParams(-1, dp(46)))
+            }, margin(-1, -2, 0, 2, 0, 8))
         }
     }
 
