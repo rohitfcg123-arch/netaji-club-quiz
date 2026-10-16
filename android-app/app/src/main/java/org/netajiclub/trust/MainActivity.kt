@@ -2,7 +2,6 @@ package org.netajiclub.trust
 
 import android.content.Intent
 import android.graphics.Canvas
-import android.graphics.BitmapFactory
 import android.graphics.Path
 import android.graphics.Paint
 import android.graphics.RectF
@@ -1125,47 +1124,72 @@ class MainActivity : AppCompatActivity() {
 }
 
 private class TrustLogoView(context: Context) : View(context) {
-    private val outer = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFF26A21.toInt(); style = Paint.Style.STROKE; strokeWidth = 4f }
-    private val inner = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF102F5D.toInt(); style = Paint.Style.STROKE; strokeWidth = 2f }
-    private val fallbackFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF102F5D.toInt(); style = Paint.Style.FILL }
-    private val fallbackOrange = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFF26A21.toInt(); style = Paint.Style.FILL }
-    private val fallbackGreen = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF238548.toInt(); style = Paint.Style.FILL }
-    private val fallbackText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFF102F5D.toInt()
-        textAlign = Paint.Align.CENTER
-        typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
-    }
-    private val trustLogo = runCatching { BitmapFactory.decodeResource(resources, R.drawable.netaji_trust_logo) }.getOrNull()
+    private val navy = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF102F5D.toInt(); style = Paint.Style.FILL }
+    private val navyStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF102F5D.toInt(); style = Paint.Style.STROKE; strokeWidth = 2.2f }
+    private val orange = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFF26A21.toInt(); style = Paint.Style.STROKE; strokeWidth = 4.5f; strokeCap = Paint.Cap.ROUND }
+    private val green = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF238548.toInt(); style = Paint.Style.STROKE; strokeWidth = 4.5f; strokeCap = Paint.Cap.ROUND }
+    private val white = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFF8E8.toInt(); style = Paint.Style.FILL }
+    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF102F5D.toInt(); textAlign = Paint.Align.CENTER; typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD) }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val s = minOf(width, height).toFloat()
+        if (s <= 0f) return
         val cx = width / 2f
         val cy = height / 2f
         val r = s * 0.47f
-        if (trustLogo != null) {
-            val path = Path().apply { addCircle(cx, cy, r - s * .025f, Path.Direction.CW) }
-            val save = canvas.save()
-            canvas.clipPath(path)
-            val dest = RectF(cx - r + s * .025f, cy - r + s * .025f, cx + r - s * .025f, cy + r - s * .025f)
-            canvas.drawBitmap(trustLogo, null, dest, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
-            canvas.restoreToCount(save)
-            canvas.drawCircle(cx, cy, r, outer)
-            canvas.drawCircle(cx, cy, r - s * .055f, inner)
-            return
-        }
+        canvas.drawCircle(cx, cy, r, orange)
+        canvas.drawCircle(cx, cy, r - s * .045f, navyStroke)
+        val seal = Path().apply { addCircle(cx, cy, r - s * .065f, Path.Direction.CW) }
+        val save = canvas.save()
+        canvas.clipPath(seal)
+        canvas.drawCircle(cx, cy, r, white)
 
-        // Safe vector fallback if the raster logo cannot be decoded.
-        canvas.drawCircle(cx, cy, r, outer)
-        canvas.drawCircle(cx, cy, r - s * .07f, inner)
-        canvas.drawArc(RectF(cx - r*.75f, cy - r*.75f, cx + r*.75f, cy + r*.75f), 200f, 140f, false, fallbackOrange)
-        canvas.drawArc(RectF(cx - r*.75f, cy - r*.75f, cx + r*.75f, cy + r*.75f), 20f, 140f, false, fallbackGreen)
-        fallbackText.textSize = s * .12f
-        canvas.drawText("NETAJI SOCIAL", cx, cy - s*.24f, fallbackText)
-        fallbackText.textSize = s * .25f
-        canvas.drawText("NST", cx, cy + s*.03f, fallbackText)
-        fallbackText.textSize = s * .12f
-        canvas.drawText("WELFARE TRUST", cx, cy + s*.23f, fallbackText)
-        canvas.drawCircle(cx, cy + s*.33f, s*.025f, fallbackFill)
+        // Saffron and green strokes echo the Trust's original emblem.
+        val swashOrange = Path().apply {
+            moveTo(cx - s*.39f, cy - s*.03f)
+            cubicTo(cx - s*.22f, cy - s*.30f, cx + s*.12f, cy - s*.08f, cx + s*.39f, cy - s*.22f)
+        }
+        val swashGreen = Path().apply {
+            moveTo(cx - s*.40f, cy + s*.21f)
+            cubicTo(cx - s*.17f, cy + s*.01f, cx + s*.16f, cy + s*.32f, cx + s*.40f, cy + s*.12f)
+        }
+        canvas.drawPath(swashOrange, orange)
+        canvas.drawPath(swashGreen, green)
+
+        // Stylised Netaji-inspired profile: cap, face, glasses, collar and shoulders.
+        canvas.drawOval(RectF(cx-s*.26f, cy-s*.04f, cx+s*.24f, cy+s*.30f), navy)
+        canvas.drawRoundRect(RectF(cx-s*.11f, cy+s*.14f, cx+s*.12f, cy+s*.34f), s*.04f, s*.04f, white)
+        canvas.drawOval(RectF(cx-s*.17f, cy-s*.20f, cx+s*.16f, cy+s*.19f), navy)
+        canvas.drawOval(RectF(cx-s*.145f, cy-s*.165f, cx+s*.125f, cy+s*.155f), white)
+        canvas.drawRoundRect(RectF(cx-s*.20f, cy-s*.25f, cx+s*.18f, cy-s*.13f), s*.06f, s*.06f, navy)
+        canvas.drawOval(RectF(cx-s*.24f, cy-s*.14f, cx+s*.21f, cy-s*.085f), navy)
+        canvas.drawOval(RectF(cx-s*.105f, cy-s*.075f, cx-s*.015f, cy+s*.005f), navyStroke)
+        canvas.drawOval(RectF(cx+s*.015f, cy-s*.075f, cx+s*.105f, cy+s*.005f), navyStroke)
+        canvas.drawLine(cx-s*.015f, cy-s*.04f, cx+s*.015f, cy-s*.04f, navyStroke)
+        canvas.drawCircle(cx-s*.06f, cy-s*.038f, s*.012f, navy)
+        canvas.drawCircle(cx+s*.06f, cy-s*.038f, s*.012f, navy)
+        canvas.drawLine(cx, cy-s*.02f, cx-s*.012f, cy+s*.045f, navyStroke)
+        canvas.drawLine(cx-s*.01f, cy+s*.075f, cx+s*.045f, cy+s*.07f, navyStroke)
+        canvas.drawLine(cx-s*.055f, cy+s*.105f, cx+s*.04f, cy+s*.105f, navyStroke)
+        canvas.drawLine(cx-s*.12f, cy+s*.18f, cx-s*.06f, cy+s*.23f, white)
+        canvas.drawLine(cx+s*.12f, cy+s*.18f, cx+s*.06f, cy+s*.23f, white)
+
+        // Small community/education symbols along the lower rim.
+        canvas.drawRect(RectF(cx-s*.34f, cy+s*.285f, cx-s*.22f, cy+s*.34f), navy)
+        canvas.drawRect(RectF(cx-s*.205f, cy+s*.285f, cx-s*.085f, cy+s*.34f), navy)
+        canvas.drawLine(cx-s*.025f, cy+s*.35f, cx-s*.025f, cy+s*.285f, navyStroke)
+        canvas.drawCircle(cx-s*.025f, cy+s*.275f, s*.025f, green)
+        canvas.drawCircle(cx+s*.12f, cy+s*.30f, s*.026f, green)
+        canvas.drawCircle(cx+s*.18f, cy+s*.30f, s*.026f, green)
+        canvas.drawLine(cx+s*.12f, cy+s*.33f, cx+s*.18f, cy+s*.33f, navyStroke)
+
+        textPaint.textSize = s * .068f
+        canvas.drawText("NETAJI SOCIAL & WELFARE TRUST", cx, cy - s*.335f, textPaint)
+        canvas.drawRect(RectF(cx-s*.26f, cy+s*.37f, cx-s*.09f, cy+s*.39f), orange.apply { style = Paint.Style.FILL; strokeWidth = 1f })
+        canvas.drawRect(RectF(cx-s*.06f, cy+s*.37f, cx+s*.10f, cy+s*.39f), green.apply { style = Paint.Style.FILL; strokeWidth = 1f })
+        canvas.restoreToCount(save)
+        canvas.drawCircle(cx, cy, r, orange.apply { style = Paint.Style.STROKE; strokeWidth = 3f })
+        canvas.drawCircle(cx, cy, r - s*.045f, navyStroke)
     }
 }
