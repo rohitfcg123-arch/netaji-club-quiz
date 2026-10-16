@@ -26,6 +26,7 @@ let currentIndex = -1;
 let answered = false;
 let questionShownAt = 0;
 let activeQuestionData = null;
+let questionListenerGeneration = 0;
 let score = 0;
 let correctCount = 0;
 let selectedLanguage = localStorage.getItem("ncQuizLanguage") || "hi";
@@ -74,10 +75,34 @@ window.addEventListener("popstate", () => {
 
 function notice(message) { $("notice").textContent = message; }
 function clearOptions() { $("options").innerHTML = ""; }
+function isPlaceholderQuestion(value) {
+  const text = String(value || "").trim().toLowerCase().replace(/\\s+/g, " ");
+  return !text ||
+    text.includes("the quiz is about to start") ||
+    text.includes("please stay on this screen") ||
+    text.includes("क्विज़ शुरू होने वाला है") ||
+    text.includes("क्विज शुरू होने वाला है") ||
+    text.includes("প্রশ্ন এখানে দেখাবে") ||
+    text.includes("waiting for the quiz");
+}
 function localizedQuestion(q) {
   const translated = q?.translations?.[selectedLanguage];
-  if (translated && typeof translated.question === "string" && Array.isArray(translated.options) && translated.options.length === 4) return translated;
-  return { question: q?.question || "", options: q?.options || [] };
+  const base = { question: q?.question || "", options: q?.options || [] };
+  if (translated && typeof translated.question === "string" && Array.isArray(translated.options) && translated.options.length === 4) {
+    // Some imported records accidentally contain the waiting-screen text in one language.
+    // Never display that placeholder as a live question when the source has real text.
+    if (!isPlaceholderQuestion(translated.question)) return translated;
+    if (!isPlaceholderQuestion(base.question)) {
+      return { question: base.question, options: translated.options };
+    }
+    for (const lang of ["hi", "en", "bn"]) {
+      const candidate = q?.translations?.[lang];
+      if (candidate && !isPlaceholderQuestion(candidate.question) && Array.isArray(candidate.options) && candidate.options.length === 4) {
+        return candidate;
+      }
+    }
+  }
+  return base;
 }
 function authError(e) {
   const messages = {
@@ -260,16 +285,26 @@ function startListening(code) {
       return;
     }
     if (quizState.status === "starting") {
+      // Invalidate in-flight callbacks from the previous question/run before showing countdown.
+      questionListenerGeneration++;
+      if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
+      currentIndex = -1;
+      activeQuestionData = null;
+      answered = false;
       setExamLock(true);
       $("status").textContent = "Starting";
       $("question").textContent = "क्विज़ शुरू होने वाला है…";
       clearOptions();
+      $("feedback").textContent = "";
       $("timer").textContent = Math.max(0, Math.ceil((Number(quizState.startAt || 0) - Date.now()) / 1000));
       return;
     }
     if (quizState.status !== "live") {
+      questionListenerGeneration++;
       setExamLock(false);
       if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
+      activeQuestionData = null;
+      answered = false;
       waiting(activeBranding?.text?.waitingText || "Admin के Quiz शुरू करने का इंतज़ार है");
       currentIndex = -1;
       return;
@@ -277,14 +312,29 @@ function startListening(code) {
 
     setExamLock(true);
     const index = Number(quizState.currentIndex || 0);
-    if (index !== currentIndex) {
+    if (index !== currentIndex || !activeQuestionData) {
       currentIndex = index;
       answered = false;
+      activeQuestionData = null;
+      const listenerGeneration = ++questionListenerGeneration;
       if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
+      $("status").textContent = "LIVE";
+      $("question").textContent = "प्रश्न लोड हो रहा है…";
+      clearOptions();
+      $("feedback").textContent = "";
       unsubQuestion = onSnapshot(doc(db, "quizzes", activeCode, "questions", String(index)), async questionSnap => {
-        if (!questionSnap.exists()) { waiting("प्रश्न लोड हो रहा है…"); return; }
-        // Ignore late callbacks from an older question.
-        if (currentIndex !== index) return;
+        // Ignore callbacks queued by an older question/run or a non-live state.
+        if (listenerGeneration !== questionListenerGeneration ||
+            currentIndex !== index ||
+            activeCode !== code ||
+            quizState?.status !== "live" ||
+            Number(quizState?.currentIndex || 0) !== index) return;
+        if (!questionSnap.exists()) {
+          $("status").textContent = "LIVE";
+          $("question").textContent = "प्रश्न लोड हो रहा है…";
+          clearOptions();
+          return;
+        }
         activeQuestionData = questionSnap.data();
         const q = localizedQuestion(activeQuestionData);
         questionShownAt = Number(quizState?.questionStartedAt || Date.now());
