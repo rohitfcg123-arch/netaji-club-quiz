@@ -194,7 +194,7 @@ class MainActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(16), dp(16), dp(16))
         }
-        scroller.addView(content, ScrollView.LayoutParams(-1, -2))
+        scroller.addView(content, ViewGroup.LayoutParams(-1, -2))
         root.addView(scroller, LinearLayout.LayoutParams(-1, 0, 1f))
 
         bottomBar = LinearLayout(this).apply {
@@ -318,7 +318,7 @@ class MainActivity : AppCompatActivity() {
                 body = pinned["body"].stringOr(""),
                 meta = pinned["category"].stringOr("Notice"),
                 icon = "📣",
-                onClick = { showNoticeDetail(pinned) }
+                click = { showNoticeDetail(pinned) }
             ), margin(-1, -2, 0, 0, 0, 14))
         }
 
@@ -343,7 +343,7 @@ class MainActivity : AppCompatActivity() {
         content.addView(text("Stay informed about our latest activities, events and updates.", 13f, muted), margin(-1, -2, 0, 4, 0, 14))
         val search = EditText(this).apply {
             hint = "Search notices..."
-            singleLine = true
+            isSingleLine = true
             setPadding(dp(14), dp(12), dp(14), dp(12))
             background = rounded(paper, 16, 0xFFE5E7EB.toInt())
         }
