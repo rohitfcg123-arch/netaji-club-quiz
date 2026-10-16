@@ -1,0 +1,21 @@
+{
+  "id": "./",
+  "name": "Netaji Club Quiz",
+  "short_name": "NC Quiz",
+  "description": "Netaji Club Saraswati Puja Quiz",
+  "lang": "hi-IN",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff4d8",
+  "theme_color": "#fff4d8",
+  "icons": [
+    {
+      "src": "./icons/netaji-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
