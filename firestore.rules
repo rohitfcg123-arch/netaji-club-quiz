@@ -260,6 +260,32 @@ service cloud.firestore {
       allow delete: if settingId in ['branding', 'registrationConfig'] && isAdmin();
     }
 
+    // -------------------------
+    // Public Trust content for the native app.
+    // All writes stay restricted to existing approved Google Admins.
+    // -------------------------
+    match /trustNotices/{noticeId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /trustEvents/{eventId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /trustActivities/{activityId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /trustInfo/{infoId} {
+      allow get: if infoId == 'contact';
+      allow list: if false;
+      allow create, update: if infoId == 'contact' && isAdmin();
+      allow delete: if false;
+    }
+
     // Deny everything not explicitly allowed above.
     match /{document=**} {
       allow read, write: if false;
