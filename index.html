@@ -2,7 +2,7 @@
 <html lang="hi">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#fff4d8"><title>नेताजी क्लब | क्विज़</title>
+<meta name="theme-color" content="#fff4d8"><link rel="manifest" href="./manifest.webmanifest"><title>नेताजी क्लब | क्विज़</title>
 <link rel="stylesheet" href="css/styles.css?v=20261013-text-contrast-top3-1">
 </head>
 <body>
@@ -25,4 +25,5 @@
 <script type="module" src="js/app.js?v=20261016-back-warning-1"></script>
 <script src="js/language-switcher.js?v=20261016-ui-language-5"></script>
 <script src="js/pull-refresh.js?v=20261016-pull-refresh-1"></script>
+<script>if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));</script>
 </body></html>
