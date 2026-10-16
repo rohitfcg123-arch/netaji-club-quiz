@@ -31,14 +31,15 @@ jobs:
       - name: Build debug APK
         run: gradle -p android-app assembleDebug
 
-      - name: Write debug signing fingerprint
+      - name: Write APK signing fingerprint
         shell: bash
         run: |
-          mkdir -p "$HOME/.android"
-          if [ -f "$HOME/.android/debug.keystore" ]; then
-            keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey > android-app/debug-signing-certificate.txt
+          APK="android-app/app/build/outputs/apk/debug/app-debug.apk"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          if [ -x "$APKSIGNER" ]; then
+            "$APKSIGNER" verify --print-certs "$APK" > android-app/debug-signing-certificate.txt
           else
-            echo "Debug keystore was not found." > android-app/debug-signing-certificate.txt
+            echo "apksigner was not found; inspect the APK signing certificate with Android SDK tools." > android-app/debug-signing-certificate.txt
           fi
 
       - name: Upload installable APK and setup fingerprint
