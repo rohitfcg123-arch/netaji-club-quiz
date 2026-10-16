@@ -1731,19 +1731,25 @@ class MainActivity : AppCompatActivity() {
 }
 
 private class TrustHeroArtworkView(context: Context) : View(context) {
-    private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFEED3.toInt() }
-    private val orangeStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFFF26A21.toInt(); style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND
+    private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFF9EC.toInt() }
+    private val navy = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF102F5D.toInt(); style = Paint.Style.FILL }
+    private val navyStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF102F5D.toInt(); style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND }
+    private val skin = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFE3C4.toInt(); style = Paint.Style.FILL }
+    private val skinShade = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFD9A77E.toInt(); style = Paint.Style.FILL }
+    private val crowdLight = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFDCE1DC.toInt(); style = Paint.Style.FILL }
+    private val crowdDark = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFAFBBB7.toInt(); style = Paint.Style.FILL }
+    private val orange = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFF9933.toInt(); style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND }
+    private val green = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF138808.toInt(); style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND }
+    private val white = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt(); style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
+    private val headlinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFF102F5D.toInt()
+        typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
+        textSize = 31f
     }
-    private val greenStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFF238548.toInt(); style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND
-    }
-    private val navyFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF102F5D.toInt(); style = Paint.Style.FILL }
-    private val faceFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFD9B0.toInt(); style = Paint.Style.FILL }
-    private val paleCrowd = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFD5D9D6.toInt(); style = Paint.Style.FILL }
-    private val deepCrowd = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF9CA9A8.toInt(); style = Paint.Style.FILL }
-    private val glassStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFF102F5D.toInt(); style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND
+    private val supportPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFF40536A.toInt()
+        typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+        textSize = 11.5f
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -1752,73 +1758,149 @@ private class TrustHeroArtworkView(context: Context) : View(context) {
         val h = height.toFloat()
         if (w <= 0f || h <= 0f) return
         canvas.drawRoundRect(RectF(0f, 0f, w, h), dp(24).toFloat(), dp(24).toFloat(), backgroundPaint)
+        val save = canvas.save()
+        canvas.clipRect(0f, 0f, w, h)
 
-        // Correct Indian tricolour: saffron, white, green with a navy Ashoka Chakra.
-        val flagLeft = w * .43f
-        val flagTop = h * .075f
-        val flagRight = w * .985f
-        val flagBottom = h * .385f
-        val flagBand = (flagBottom - flagTop) / 3f
-        val flagSaffron = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFF9933.toInt(); style = Paint.Style.FILL }
-        val flagWhite = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt(); style = Paint.Style.FILL }
-        val flagGreen = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF138808.toInt(); style = Paint.Style.FILL }
-        val chakra = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF000080.toInt(); style = Paint.Style.STROKE; strokeWidth = h * .006f }
-        canvas.drawRect(flagLeft, flagTop, flagRight, flagTop + flagBand, flagSaffron)
-        canvas.drawRect(flagLeft, flagTop + flagBand, flagRight, flagTop + 2f * flagBand, flagWhite)
-        canvas.drawRect(flagLeft, flagTop + 2f * flagBand, flagRight, flagBottom, flagGreen)
-        val chakraX = (flagLeft + flagRight) / 2f
-        val chakraY = flagTop + 1.5f * flagBand
-        val chakraR = flagBand * .34f
-        canvas.drawCircle(chakraX, chakraY, chakraR, chakra)
-        canvas.drawCircle(chakraX, chakraY, h * .004f, chakra.apply { style = Paint.Style.FILL })
-        for (spoke in 0 until 24) {
-            val angle = spoke * Math.PI / 12.0
-            canvas.drawLine(
-                chakraX, chakraY,
-                chakraX + kotlin.math.cos(angle).toFloat() * chakraR,
-                chakraY + kotlin.math.sin(angle).toFloat() * chakraR,
-                chakra
-            )
+        // Sweeping Indian tricolour brush strokes, matching the reference artwork.
+        orange.strokeWidth = h * .055f
+        green.strokeWidth = h * .052f
+        white.strokeWidth = h * .040f
+        val orangeWave = Path().apply {
+            moveTo(w * .39f, h * .73f)
+            cubicTo(w * .54f, h * .46f, w * .76f, h * .45f, w * 1.08f, h * .13f)
         }
-
-        // Distant community silhouettes create a subtle illustrated footer.
-        for (i in 0 until 15) {
-            val x = w * (.31f + i * .047f)
-            val y = h * (.80f + (i % 3) * .018f)
-            val r = h * (.019f + (i % 2) * .003f)
-            canvas.drawCircle(x, y, r, if (i % 3 == 0) deepCrowd else paleCrowd)
-            canvas.drawRoundRect(
-                RectF(x - r * 1.15f, y + r * .8f, x + r * 1.15f, y + h * .15f),
-                r, r, if (i % 3 == 0) deepCrowd else paleCrowd
-            )
+        val whiteWave = Path().apply {
+            moveTo(w * .39f, h * .79f)
+            cubicTo(w * .58f, h * .56f, w * .81f, h * .54f, w * 1.08f, h * .28f)
         }
+        val greenWave = Path().apply {
+            moveTo(w * .38f, h * .86f)
+            cubicTo(w * .56f, h * .66f, w * .84f, h * .64f, w * 1.08f, h * .40f)
+        }
+        canvas.drawPath(orangeWave, orange)
+        canvas.drawPath(whiteWave, white)
+        canvas.drawPath(greenWave, green)
 
-        // Netaji-inspired cap, profile and shoulders on the right-hand side.
+        // Large, hand-drawn Netaji portrait in cap and round spectacles, facing left.
         val s = h
         val cx = w * .79f
-        val headTop = h * .24f
-        val headBottom = h * .61f
-        canvas.drawRoundRect(RectF(cx - s * .22f, h * .57f, cx + s * .24f, h * .94f), s * .08f, s * .08f, navyFill)
-        canvas.drawOval(RectF(cx - s * .19f, headTop, cx + s * .17f, headBottom), faceFill)
-        val cap = Path().apply {
-            moveTo(cx - s * .22f, headTop + s * .035f)
-            quadTo(cx - s * .06f, headTop - s * .12f, cx + s * .16f, headTop + s * .025f)
-            lineTo(cx + s * .21f, headTop + s * .09f)
-            lineTo(cx - s * .24f, headTop + s * .09f)
+        val headTop = h * .19f
+        val face = Path().apply {
+            moveTo(cx - s * .17f, headTop + s * .07f)
+            cubicTo(cx - s * .25f, headTop + s * .16f, cx - s * .23f, headTop + s * .34f, cx - s * .16f, headTop + s * .43f)
+            lineTo(cx - s * .12f, headTop + s * .51f)
+            cubicTo(cx - s * .05f, headTop + s * .57f, cx + s * .09f, headTop + s * .53f, cx + s * .15f, headTop + s * .42f)
+            cubicTo(cx + s * .20f, headTop + s * .29f, cx + s * .14f, headTop + s * .11f, cx + s * .04f, headTop + s * .06f)
             close()
         }
-        canvas.drawPath(cap, navyFill)
-        canvas.drawRoundRect(RectF(cx - s * .25f, headTop + s * .08f, cx + s * .22f, headTop + s * .12f), s * .025f, s * .025f, navyFill)
-        glassStroke.strokeWidth = s * .014f
-        canvas.drawOval(RectF(cx - s * .14f, headTop + s * .21f, cx - s * .015f, headTop + s * .295f), glassStroke)
-        canvas.drawOval(RectF(cx + s * .012f, headTop + s * .21f, cx + s * .14f, headTop + s * .295f), glassStroke)
-        canvas.drawLine(cx - s * .015f, headTop + s * .25f, cx + s * .012f, headTop + s * .25f, glassStroke)
-        canvas.drawLine(cx + s * .03f, headTop + s * .30f, cx - s * .005f, headTop + s * .38f, glassStroke)
-        canvas.drawLine(cx - s * .015f, headTop + s * .405f, cx + s * .065f, headTop + s * .40f, glassStroke)
-        canvas.drawLine(cx - s * .13f, h * .67f, cx - s * .055f, h * .77f, orangeStroke)
-        canvas.drawLine(cx + s * .13f, h * .67f, cx + s * .055f, h * .77f, greenStroke)
-        orangeStroke.strokeWidth = h * .022f
-        greenStroke.strokeWidth = h * .022f
+        canvas.drawPath(face, skin)
+        val cap = Path().apply {
+            moveTo(cx - s * .23f, headTop + s * .12f)
+            cubicTo(cx - s * .26f, headTop - s * .01f, cx - s * .08f, headTop - s * .07f, cx + s * .11f, headTop + s * .01f)
+            lineTo(cx + s * .20f, headTop + s * .07f)
+            lineTo(cx - s * .18f, headTop + s * .15f)
+            close()
+        }
+        canvas.drawPath(cap, navy)
+        canvas.drawRoundRect(RectF(cx - s * .24f, headTop + s * .105f, cx + s * .20f, headTop + s * .145f), s * .018f, s * .018f, navy)
+        // Cap seam and insignia.
+        navyStroke.strokeWidth = s * .008f
+        canvas.drawLine(cx - s * .13f, headTop + s * .025f, cx + s * .10f, headTop + s * .045f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFBFC9D4.toInt(); strokeWidth = s * .009f })
+        canvas.drawCircle(cx + s * .07f, headTop + s * .018f, s * .012f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() })
+
+        // Ear, nose, moustache, spectacles and the serious profile expression.
+        canvas.drawOval(RectF(cx + s * .10f, headTop + s * .25f, cx + s * .20f, headTop + s * .37f), skinShade)
+        canvas.drawOval(RectF(cx - s * .18f, headTop + s * .22f, cx - s * .065f, headTop + s * .305f), navyStroke.apply { strokeWidth = s * .012f })
+        canvas.drawOval(RectF(cx - s * .045f, headTop + s * .22f, cx + s * .075f, headTop + s * .305f), navyStroke)
+        canvas.drawLine(cx - s * .065f, headTop + s * .26f, cx - s * .045f, headTop + s * .26f, navyStroke)
+        canvas.drawLine(cx - s * .19f, headTop + s * .245f, cx - s * .245f, headTop + s * .225f, navyStroke)
+        canvas.drawLine(cx - s * .245f, headTop + s * .225f, cx - s * .265f, headTop + s * .255f, navyStroke)
+        val nose = Path().apply {
+            moveTo(cx - s * .17f, headTop + s * .29f)
+            lineTo(cx - s * .235f, headTop + s * .36f)
+            lineTo(cx - s * .17f, headTop + s * .375f)
+        }
+        canvas.drawPath(nose, navyStroke)
+        val moustache = Path().apply {
+            moveTo(cx - s * .18f, headTop + s * .385f)
+            cubicTo(cx - s * .12f, headTop + s * .355f, cx - s * .07f, headTop + s * .40f, cx - s * .015f, headTop + s * .385f)
+            cubicTo(cx - s * .06f, headTop + s * .435f, cx - s * .13f, headTop + s * .43f, cx - s * .18f, headTop + s * .385f)
+            close()
+        }
+        canvas.drawPath(moustache, navy)
+        canvas.drawLine(cx - s * .15f, headTop + s * .455f, cx - s * .04f, headTop + s * .46f, navyStroke.apply { strokeWidth = s * .009f })
+
+        // Neck, high-collared uniform and broad shoulders.
+        val neck = Path().apply {
+            moveTo(cx - s * .12f, headTop + s * .48f)
+            lineTo(cx + s * .08f, headTop + s * .47f)
+            lineTo(cx + s * .10f, h * .69f)
+            lineTo(cx - s * .13f, h * .70f)
+            close()
+        }
+        canvas.drawPath(neck, skinShade)
+        val shoulders = Path().apply {
+            moveTo(cx - s * .13f, h * .66f)
+            lineTo(cx - s * .25f, h * .72f)
+            lineTo(cx - s * .37f, h * 1.04f)
+            lineTo(cx + s * .34f, h * 1.04f)
+            lineTo(cx + s * .24f, h * .72f)
+            lineTo(cx + s * .09f, h * .66f)
+            close()
+        }
+        canvas.drawPath(shoulders, navy)
+        val collar = Path().apply {
+            moveTo(cx - s * .15f, h * .66f)
+            lineTo(cx - s * .03f, h * .73f)
+            lineTo(cx - s * .10f, h * .81f)
+            lineTo(cx - s * .18f, h * .72f)
+            close()
+        }
+        canvas.drawPath(collar, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFF9EC.toInt() })
+        val collar2 = Path().apply {
+            moveTo(cx + s * .06f, h * .66f)
+            lineTo(cx - s * .03f, h * .73f)
+            lineTo(cx + s * .02f, h * .81f)
+            lineTo(cx + s * .15f, h * .72f)
+            close()
+        }
+        canvas.drawPath(collar2, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFF9EC.toInt() })
+        canvas.drawCircle(cx - s * .17f, h * .73f, s * .018f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFF2C46B.toInt() })
+        canvas.drawCircle(cx + s * .15f, h * .73f, s * .018f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFF2C46B.toInt() })
+
+        // A whole line of children and community members under Netaji.
+        for (i in 0 until 19) {
+            val x = w * (.31f + i * .039f)
+            val y = h * (.83f + (i % 3) * .018f)
+            val r = h * (.017f + (i % 4) * .002f)
+            val p = if (i % 4 == 0) crowdDark else crowdLight
+            canvas.drawCircle(x, y, r, p)
+            val body = Path().apply {
+                moveTo(x - r * 1.1f, y + r * .65f)
+                lineTo(x - r * 1.55f, y + h * .13f)
+                quadTo(x, y + h * .17f, x + r * 1.55f, y + h * .13f)
+                lineTo(x + r * 1.1f, y + r * .65f)
+                close()
+            }
+            canvas.drawPath(body, p)
+            // Small raised arms give the crowd a celebratory, welcoming feel.
+            canvas.drawLine(x - r, y + r, x - r * 2.2f, y + r * .1f, Paint(p).apply { style = Paint.Style.STROKE; strokeWidth = r * .45f; strokeCap = Paint.Cap.ROUND })
+            canvas.drawLine(x + r, y + r, x + r * 2.0f, y + r * .15f, Paint(p).apply { style = Paint.Style.STROKE; strokeWidth = r * .45f; strokeCap = Paint.Cap.ROUND })
+        }
+
+        // Copy is drawn into the artwork so the heading and illustration keep the same composition.
+        headlinePaint.textSize = (w * .073f).coerceIn(dp(22).toFloat(), dp(31).toFloat())
+        val textX = w * .055f
+        val firstY = h * .29f
+        canvas.drawText("Serving our", textX, firstY, headlinePaint)
+        canvas.drawText("community,", textX, firstY + headlinePaint.textSize * 1.03f, headlinePaint)
+        canvas.drawText("together", textX, firstY + headlinePaint.textSize * 2.06f, headlinePaint)
+        supportPaint.textSize = (w * .031f).coerceIn(dp(10).toFloat(), dp(12).toFloat())
+        val supportY = firstY + headlinePaint.textSize * 3.15f
+        canvas.drawText("Education  |  Environment", textX, supportY, supportPaint)
+        canvas.drawText("Social Welfare  |  Health", textX, supportY + supportPaint.textSize * 1.35f, supportPaint)
+        canvas.drawText("Empowerment", textX, supportY + supportPaint.textSize * 2.70f, supportPaint)
+        canvas.restoreToCount(save)
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density + .5f).toInt()
