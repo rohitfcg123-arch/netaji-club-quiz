@@ -131,7 +131,7 @@ class MainActivity : AppCompatActivity() {
         try {
             val options = FirebaseOptions.Builder()
                 .setApiKey("AIzaSyCG85CidK3Dczuo9o21QG6AhTJjFAGdynE")
-                .setApplicationId("1:1085917792894:android:netajiclubtrustnative")
+                .setApplicationId(getString(R.string.firebase_app_id))
                 .setProjectId("netaji-club")
                 .setGcmSenderId("1085917792894")
                 .setStorageBucket("netaji-club.firebasestorage.app")
@@ -1077,7 +1077,7 @@ class MainActivity : AppCompatActivity() {
         if (currentPage == "quiz-live") {
             toast("Please remain on the quiz screen until the Admin ends the competition.")
         } else {
-            super.onBackPressedDispatcher.onBackPressed()
+            super.onBackPressed()
         }
     }
 
