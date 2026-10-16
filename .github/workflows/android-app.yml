@@ -34,18 +34,30 @@ jobs:
       - name: Write APK signing fingerprint
         shell: bash
         run: |
+          set -uo pipefail
           APK="android-app/app/build/outputs/apk/debug/app-debug.apk"
+          OUT="android-app/debug-signing-certificate.txt"
+          SIMPLE="android-app/SHA1-FINGERPRINT.txt"
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
-          if [ -x "$APKSIGNER" ]; then
-            "$APKSIGNER" verify --print-certs "$APK" > android-app/debug-signing-certificate.txt
+          if [ ! -f "$APK" ]; then
+            echo "APK not found: $APK" | tee "$OUT" "$SIMPLE"
+            exit 1
+          fi
+          if [ -n "$APKSIGNER" ] && [ -x "$APKSIGNER" ]; then
+            "$APKSIGNER" verify --print-certs "$APK" > "$OUT" 2>&1 || true
           else
-            echo "apksigner was not found; inspect the APK signing certificate with Android SDK tools." > android-app/debug-signing-certificate.txt
+            keytool -printcert -jarfile "$APK" > "$OUT" 2>&1 || true
           fi
-          grep -E "Signer #1 certificate SHA-1 digest:|Signer #1 certificate SHA-256 digest:" android-app/debug-signing-certificate.txt | sed -E 's/.*SHA-1 digest: /SHA-1: /; s/.*SHA-256 digest: /SHA-256: /' > android-app/SHA1-FINGERPRINT.txt
-          if ! grep -q "SHA-1:" android-app/SHA1-FINGERPRINT.txt; then
-            echo "SHA-1 fingerprint was not found. See debug-signing-certificate.txt." >> android-app/SHA1-FINGERPRINT.txt
+          SHA1="$(grep -i 'SHA-1' "$OUT" | head -n 1 | sed -E 's/.*SHA-1[^:]*:[[:space:]]*//I' | tr '[:lower:]' '[:upper:]' | tr -d '[:space:]')"
+          if [ -z "$SHA1" ]; then
+            SHA1="$(grep -i 'SHA1' "$OUT" | head -n 1 | sed -E 's/.*SHA1[^:]*:[[:space:]]*//I' | tr '[:lower:]' '[:upper:]' | tr -d '[:space:]')"
           fi
-
+          if [ -n "$SHA1" ]; then
+            printf 'SHA-1: %s\n' "$SHA1" > "$SIMPLE"
+          else
+            printf 'Could not automatically parse SHA-1. Full certificate output is in debug-signing-certificate.txt.\n' > "$SIMPLE"
+          fi
+          cat "$SIMPLE"
       - name: Upload installable APK and setup fingerprint
         uses: actions/upload-artifact@v4
         with:
