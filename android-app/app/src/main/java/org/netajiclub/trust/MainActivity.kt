@@ -87,6 +87,7 @@ class MainActivity : AppCompatActivity() {
     private var liveStatus: TextView? = null
     private var liveQuestion: TextView? = null
     private var timerLabel: TextView? = null
+    private var timerTickScheduled = false
     private var answerButtons = mutableListOf<MaterialButtonRef>()
     private var statusText: TextView? = null
     private var questionFeedback: TextView? = null
@@ -865,7 +866,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateLiveTimer() {
-        if (currentPage != "quiz-live") return
+        if (currentPage != "quiz-live") {
+            timerTickScheduled = false
+            return
+        }
         val started = (activeQuiz["questionStartedAt"] as? Number)?.toLong() ?: questionStartedMs
         val seconds = ((activeQuiz["settings"] as? Map<*, *>)?.get("questionSeconds") as? Number)?.toInt()
             ?: (activeQuiz["sec"] as? Number)?.toInt() ?: questionSeconds
@@ -876,7 +880,13 @@ class MainActivity : AppCompatActivity() {
             answerButtons.forEach { it.view.isEnabled = false }
             questionFeedback?.text = "Time is up. Wait for the Admin to move to the next question."
         }
-        root.postDelayed({ updateLiveTimer() }, 1000)
+        if (!timerTickScheduled) {
+            timerTickScheduled = true
+            root.postDelayed({
+                timerTickScheduled = false
+                updateLiveTimer()
+            }, 1000)
+        }
     }
 
     private fun showQuizCompleted() {
