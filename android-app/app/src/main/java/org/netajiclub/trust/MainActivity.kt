@@ -770,23 +770,21 @@ class MainActivity : AppCompatActivity() {
         val email = contactInfo["email"].stringOr("")
         val address = contactInfo["address"].stringOr("")
         renderPage("contact")
-        content.addView(text("Contact Us", 24f, navy, true))
-        content.addView(text("Get in touch with Netaji Social & Welfare Trust.", 13f, muted), margin(-1, -2, 0, 4, 0, 12))
+        addPageHeading("Contact Us", "Get in touch with Netaji Social & Welfare Trust.")
         content.addView(panel().apply {
-            addView(text("Phone", 13f, muted, true))
-            addView(text(phone.ifBlank { "Not published yet" }, 16f, ink, true), margin(-1, -2, 0, 3, 0, 12))
-            addView(text("Email", 13f, muted, true))
-            addView(text(email.ifBlank { "Not published yet" }, 16f, ink, true), margin(-1, -2, 0, 3, 0, 12))
-            addView(text("Address", 13f, muted, true))
-            addView(text(address.ifBlank { "Not published yet" }, 15f, ink))
+            addView(text("☎  Phone", 12f, muted, true))
+            addView(text(phone.ifBlank { "Not published yet" }, 15.5f, navy, true).apply { setPadding(0, dp(4), 0, dp(12)) })
+            addView(text("✉  Email", 12f, muted, true))
+            addView(text(email.ifBlank { "Not published yet" }, 15.5f, navy, true).apply { setPadding(0, dp(4), 0, dp(12)) })
+            addView(text("⌖  Address", 12f, muted, true))
+            addView(text(address.ifBlank { "Not published yet" }, 14.5f, ink).apply { setPadding(0, dp(4), 0, 0) })
         }, margin(-1, -2, 0, 0, 0, 12))
         if (phone.isNotBlank()) content.addView(secondaryButton("Call the Trust") {
             runCatching { startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + phone))) }
-        }, margin(-1, dp(48), 0, 0, 0, 8))
+        }, margin(-1, dp(50), 0, 0, 0, 8))
         if (email.isNotBlank()) content.addView(primaryButton("Email the Trust") {
             runCatching { startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:" + email))) }
-        }, margin(-1, dp(48), 0, 0, 0, 8))
-        content.addView(secondaryButton("Back to Profile") { showProfile() }, margin(-1, dp(48), 0, 12, 0, 0))
+        }, margin(-1, dp(50), 0, 0, 0, 8))
     }
 
     private fun openQuiz() {
@@ -803,19 +801,23 @@ class MainActivity : AppCompatActivity() {
         renderPage("login")
         val c = panel()
         c.gravity = Gravity.CENTER_HORIZONTAL
-        c.addView(TrustLogoView(this), LinearLayout.LayoutParams(dp(90), dp(90)))
-        c.addView(text("Quiz & Competitions", 23f, navy, true).apply { gravity = Gravity.CENTER; setPadding(0, dp(10), 0, dp(6)) })
-        c.addView(text("Sign in with your Google Account to join a live quiz. Your account is linked to the existing Netaji Club competition system.", 14f, muted).apply {
+        c.setPadding(dp(22), dp(24), dp(22), dp(22))
+        c.addView(TrustLogoView(this), LinearLayout.LayoutParams(dp(88), dp(88)))
+        c.addView(text("Quiz & Competitions", 23f, navy, true).apply {
             gravity = Gravity.CENTER
-            setPadding(0, 0, 0, dp(12))
+            setPadding(0, dp(12), 0, dp(7))
+        })
+        c.addView(text("Join the Trust's live quiz competitions with your Google Account. The existing website Admin controls the same competition.", 13.5f, muted).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, dp(18))
         })
         c.addView(primaryButton("Continue with Google") { startGoogleSignIn() }, LinearLayout.LayoutParams(-1, dp(52)))
-        c.addView(text("Not ready to play yet? You can still browse notices, events and activities without signing in.", 12f, muted).apply {
+        c.addView(text("You can browse notices, events and activities without signing in.", 11.5f, muted).apply {
             gravity = Gravity.CENTER
-            setPadding(dp(8), dp(12), dp(8), 0)
+            setPadding(dp(8), dp(14), dp(8), 0)
         })
-        content.addView(c, margin(-1, -2, 0, 8, 0, 0))
-        content.addView(secondaryButton("Back to Home") { showHome() }, margin(-1, dp(48), 0, 8, 0, 0))
+        content.addView(c, margin(-1, -2, 0, 8, 0, 12))
+        content.addView(secondaryButton("Back to Home") { showHome() }, margin(-1, dp(48), 0, 0, 0, 0))
     }
 
     private fun startGoogleSignIn() {
@@ -834,10 +836,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun showQuizJoin() {
         renderPage("quiz-join")
-        content.addView(text("Quiz & Competitions", 25f, navy, true))
-        content.addView(text("Join the same competition that the website Admin controls.", 13f, muted), margin(-1, -2, 0, 4, 0, 12))
+        addPageHeading("Quiz & Competitions", "Join the same competition that the website Admin controls.")
         val form = panel()
-        form.addView(text("Question Language", 13f, ink, true))
+        form.addView(text("🏆  JOIN A LIVE COMPETITION", 11f, saffron, true))
+        form.addView(text("Almost ready!", 21f, navy, true).apply { setPadding(0, dp(6), 0, dp(5)) })
+        form.addView(text("Enter your name, choose the question language and add the Quiz Code from the Admin.", 12.5f, muted).apply {
+            setPadding(0, 0, 0, dp(15))
+        })
+        form.addView(text("Question Language", 12.5f, ink, true))
         val language = Spinner(this)
         language.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, listOf("हिंदी", "English", "বাংলা (Bengali)"))
         language.setSelection(when (selectedQuestionLanguage) { "en" -> 1; "bn" -> 2; else -> 0 })
@@ -847,17 +853,17 @@ class MainActivity : AppCompatActivity() {
                 selectedQuestionLanguage = listOf("hi", "en", "bn")[position]
             }
         }
-        form.addView(language, margin(-1, dp(48), 0, 2, 0, 12))
-        form.addView(text("Your Name", 13f, ink, true))
+        form.addView(language, margin(-1, dp(48), 0, 3, 0, 12))
+        form.addView(text("Your Name", 12.5f, ink, true))
         playerNameInput = input(currentUser?.displayName.orEmpty(), "Enter your name")
         playerNameInput?.setSingleLine(true)
-        form.addView(playerNameInput, margin(-1, dp(52), 0, 2, 0, 12))
-        form.addView(text("Quiz Code", 13f, ink, true))
+        form.addView(playerNameInput, margin(-1, dp(52), 0, 3, 0, 12))
+        form.addView(text("Quiz Code", 12.5f, ink, true))
         quizCodeInput = input(getPreferences(MODE_PRIVATE).getString("last_quiz_code", "").orEmpty().uppercase(Locale.ROOT), "Enter the code from the Admin")
         quizCodeInput?.setSingleLine(true)
         quizCodeInput?.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
-        form.addView(quizCodeInput, margin(-1, dp(52), 0, 2, 0, 12))
-        form.addView(primaryButton("Start Quiz") {
+        form.addView(quizCodeInput, margin(-1, dp(52), 0, 3, 0, 15))
+        form.addView(primaryButton("Start Quiz  →") {
             val name = playerNameInput?.text?.toString()?.trim().orEmpty()
             val code = quizCodeInput?.text?.toString()?.trim()?.uppercase(Locale.ROOT).orEmpty()
             if (name.isBlank() || code.isBlank()) {
@@ -869,8 +875,9 @@ class MainActivity : AppCompatActivity() {
             }
         }, LinearLayout.LayoutParams(-1, dp(52)))
         content.addView(form)
-        content.addView(space(10))
-        content.addView(text("Your saved code is only prefilled for convenience. The quiz will not join until you press Start Quiz.", 12f, muted))
+        content.addView(text("Your saved code is only prefilled for convenience. The quiz will not join until you press Start Quiz.", 11.5f, muted).apply {
+            setPadding(dp(4), dp(12), dp(4), 0)
+        })
     }
 
     private fun joinQuiz(code: String, name: String) {
@@ -969,17 +976,30 @@ class MainActivity : AppCompatActivity() {
     private fun showWaiting(message: String) {
         if (currentPage != "quiz-live") {
             renderPage("quiz-waiting")
-            content.addView(text("Quiz & Competitions", 24f, navy, true))
-            content.addView(space(12))
+            addPageHeading("Quiz & Competitions", "Stay on this screen while the live competition is controlled by the Admin.")
             val c = panel()
             c.gravity = Gravity.CENTER_HORIZONTAL
-            c.addView(text("⏳", 42f, saffron, true).apply { gravity = Gravity.CENTER })
-            liveStatus = text("WAITING", 13f, green, true).apply { gravity = Gravity.CENTER }
+            c.setPadding(dp(24), dp(25), dp(24), dp(25))
+            c.addView(TextView(this).apply {
+                text = "⌛"
+                textSize = 44f
+                gravity = Gravity.CENTER
+                background = rounded(paleOrange, 24)
+                setPadding(dp(12), dp(8), dp(12), dp(8))
+            }, LinearLayout.LayoutParams(dp(76), dp(76)))
+            liveStatus = text("WAITING", 13f, green, true).apply {
+                gravity = Gravity.CENTER
+                setPadding(0, dp(10), 0, dp(7))
+            }
             c.addView(liveStatus)
-            c.addView(space(10))
-            liveQuestion = text(message, 21f, navy, true).apply { gravity = Gravity.CENTER; setPadding(dp(8), dp(4), dp(8), dp(8)) }
+            liveQuestion = text(message, 22f, navy, true).apply {
+                gravity = Gravity.CENTER
+                setPadding(0, dp(4), 0, dp(10))
+            }
             c.addView(liveQuestion)
-            c.addView(text("The app stays here while the website Admin controls the same live competition.", 12f, muted).apply { gravity = Gravity.CENTER })
+            c.addView(text("Questions and the timer will appear here as soon as the Admin starts the quiz.", 12.5f, muted).apply {
+                gravity = Gravity.CENTER
+            })
             content.addView(c)
         } else {
             liveQuestion?.text = message
@@ -1026,42 +1046,67 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderLiveQuestion() {
         renderPage("quiz-live")
-        content.addView(text(activeQuiz["name"].stringOr("Quiz Competition"), 22f, navy, true))
-        content.addView(space(8))
+        content.addView(text(activeQuiz["name"].stringOr("Quiz Competition"), 24f, navy, true).apply {
+            setPadding(0, dp(1), 0, dp(12))
+        })
+
         val timerCard = panel(paleOrange)
         timerCard.orientation = LinearLayout.HORIZONTAL
         timerCard.gravity = Gravity.CENTER_VERTICAL
-        timerLabel = text("--", 22f, saffron, true)
-        timerCard.addView(text("TIME LEFT", 11f, ink, true), LinearLayout.LayoutParams(0, -2, 1f))
+        timerCard.setPadding(dp(18), dp(13), dp(18), dp(13))
+        val timerCopy = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        timerCopy.addView(text("TIME LEFT", 11f, navy, true))
+        timerCopy.addView(text("One answer per question", 10f, muted).apply { setPadding(0, dp(3), 0, 0) })
+        timerCard.addView(timerCopy, LinearLayout.LayoutParams(0, -2, 1f))
+        timerLabel = text("-- sec", 26f, saffron, true).apply { gravity = Gravity.CENTER_VERTICAL }
         timerCard.addView(timerLabel)
-        content.addView(timerCard, margin(-1, -2, 0, 0, 0, 12))
+        content.addView(timerCard, margin(-1, -2, 0, 0, 0, 13))
+
         val qCard = panel()
+        qCard.setPadding(dp(18), dp(18), dp(18), dp(18))
         val num = ((activeQuiz["currentIndex"] as? Number)?.toInt() ?: 0) + 1
         val total = (activeQuiz["count"] as? Number)?.toInt() ?: 0
-        qCard.addView(text("QUESTION " + num + (if (total > 0) " OF " + total else ""), 11f, saffron, true))
-        qCard.addView(space(8))
+        val questionTop = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        questionTop.addView(text("QUESTION " + num + (if (total > 0) " OF " + total else ""), 11.5f, saffron, true),
+            LinearLayout.LayoutParams(0, -2, 1f))
+        questionTop.addView(text("LIVE", 10f, green, true).apply {
+            gravity = Gravity.CENTER
+            setPadding(dp(10), dp(5), dp(10), dp(5))
+            background = rounded(paleGreen, 12)
+        })
+        qCard.addView(questionTop)
+        qCard.addView(space(11))
         liveQuestion = text(localizedQuestion(activeQuestion, "question"), 22f, navy, true)
         liveQuestion?.setLineSpacing(dp(2).toFloat(), 1f)
         qCard.addView(liveQuestion)
-        qCard.addView(space(12))
+        qCard.addView(space(15))
         answerButtons.clear()
         val options = localizedOptions(activeQuestion)
         for (i in 0 until minOf(4, options.size)) {
             val b = Button(this).apply {
-                text = ('A' + i) + ". " + options[i]
+                text = ('A' + i) + ".  " + options[i]
                 textSize = 15f
                 isAllCaps = false
                 gravity = Gravity.CENTER_VERTICAL
+                typeface = Typeface.DEFAULT
+                minHeight = dp(54)
                 setTextColor(navy)
-                background = rounded(paper, 14, 0xFFD7DFEA.toInt())
-                setPadding(dp(14), dp(12), dp(14), dp(12))
+                background = rounded(paper, 17, 0xFFD9E1EB.toInt())
+                setPadding(dp(15), dp(12), dp(15), dp(12))
                 isEnabled = !answerLocked
                 setOnClickListener { submitAnswer(i) }
             }
             answerButtons += MaterialButtonRef(b, i)
-            qCard.addView(b, margin(-1, dp(54), 0, 0, 0, 8))
+            qCard.addView(b, margin(-1, dp(56), 0, 0, 0, 8))
         }
-        questionFeedback = text(if (answerLocked) "Your answer is already submitted for this question." else "Choose one answer. You can submit only once per question.", 12f, muted)
+        questionFeedback = text(
+            if (answerLocked) "Your answer is already submitted for this question."
+            else "Choose one answer. You can submit only once per question.",
+            11.5f, muted
+        ).apply { setPadding(0, dp(7), 0, 0) }
         qCard.addView(questionFeedback)
         content.addView(qCard)
         updateLiveTimer()
@@ -1188,15 +1233,24 @@ class MainActivity : AppCompatActivity() {
         questionTimer?.cancel()
         questionRegistration?.remove()
         renderPage("quiz-completed")
-        content.addView(text("Quiz Completed", 27f, navy, true))
-        content.addView(space(12))
+        addPageHeading("Quiz Completed", "Thank you for participating in the Trust's competition.")
         val c = panel()
         c.gravity = Gravity.CENTER_HORIZONTAL
-        c.addView(text("🏆", 48f, gold, true).apply { gravity = Gravity.CENTER })
-        c.addView(text("Thank you for participating!", 20f, navy, true).apply { gravity = Gravity.CENTER })
+        c.setPadding(dp(22), dp(24), dp(22), dp(24))
+        c.addView(TextView(this).apply {
+            text = "🏆"
+            textSize = 48f
+            gravity = Gravity.CENTER
+            background = rounded(0xFFFFF0D8.toInt(), 25)
+            setPadding(dp(12), dp(7), dp(12), dp(7))
+        }, LinearLayout.LayoutParams(dp(84), dp(84)))
+        c.addView(text("Thank you for participating!", 20f, navy, true).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, dp(12), 0, dp(5))
+        })
         c.addView(text("Your answers have been shared with the same competition Admin. Results will follow the website's existing result process.", 13f, muted).apply {
             gravity = Gravity.CENTER
-            setPadding(0, dp(8), 0, dp(8))
+            setPadding(0, dp(4), 0, dp(16))
         })
         c.addView(primaryButton("Back to Home") { activeCode = ""; quizRegistration?.remove(); showHome() }, LinearLayout.LayoutParams(-1, dp(50)))
         content.addView(c)
@@ -1218,174 +1272,18 @@ class MainActivity : AppCompatActivity() {
 
     private fun showDetail(title: String, body: String) {
         renderPage("detail")
-        content.addView(text(title, 24f, navy, true))
-        content.addView(space(10))
-        content.addView(panel().apply { addView(text(body, 15f, ink)) })
-        content.addView(secondaryButton("Back") {
+        content.addView(text(title, 24f, navy, true).apply { setPadding(0, 0, 0, dp(10)) })
+        content.addView(panel().apply {
+            addView(text(body, 14f, ink).apply { setLineSpacing(dp(3).toFloat(), 1f) })
+        }, margin(-1, -2, 0, 0, 0, 14))
+        content.addView(secondaryButton("‹  Back") {
             when {
                 title.contains("Notice", true) -> showNotices()
                 title.contains("Event", true) -> showEvents()
                 title.contains("Activity", true) -> showActivities()
                 else -> showProfile()
             }
-        }, margin(-1, dp(48), 0, 12, 0, 0))
-    }
-
-    private fun addPageHeading(title: String, subtitle: String) {
-        val heading = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        val back = TextView(this).apply {
-            text = "‹"
-            textSize = 36f
-            gravity = Gravity.CENTER
-            setTextColor(navy)
-            background = rounded(paper, 15, 0xFFE7E0D4.toInt())
-            isClickable = true
-            setOnClickListener { showHome() }
-        }
-        heading.addView(back, LinearLayout.LayoutParams(dp(42), dp(42)))
-        val copy = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(11), 0, 0, 0)
-        }
-        copy.addView(text(title, 21f, navy, true))
-        copy.addView(text(subtitle, 11.5f, muted).apply {
-            maxLines = 2
-            ellipsize = android.text.TextUtils.TruncateAt.END
-            setPadding(0, dp(3), 0, 0)
-        })
-        heading.addView(copy, LinearLayout.LayoutParams(0, -2, 1f))
-        content.addView(heading, margin(-1, -2, 0, 0, 0, 16))
-    }
-
-    private fun pinnedNoticeCard(notice: Map<String, Any?>): View {
-        val card = panel()
-        card.orientation = LinearLayout.HORIZONTAL
-        card.gravity = Gravity.CENTER_VERTICAL
-        card.setPadding(dp(12), dp(12), dp(12), dp(12))
-        val picture = FrameLayout(this).apply {
-            background = rounded(0xFFFFE4C9.toInt(), 16)
-            clipToOutline = true
-        }
-        picture.addView(TrustNoticeArtworkView(this), FrameLayout.LayoutParams(-1, -1))
-        card.addView(picture, LinearLayout.LayoutParams(dp(94), dp(104)))
-        val info = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), 0, 0, 0)
-        }
-        info.addView(text("📅  " + dateLabel(notice["publishedAt"]), 10.5f, muted, true))
-        info.addView(text(notice["title"].stringOr("Notice"), 15f, navy, true).apply {
-            maxLines = 2
-            ellipsize = android.text.TextUtils.TruncateAt.END
-            setPadding(0, dp(5), 0, dp(3))
-        })
-        info.addView(text(notice["body"].stringOr(""), 11.5f, muted).apply {
-            maxLines = 3
-            ellipsize = android.text.TextUtils.TruncateAt.END
-        })
-        info.addView(text(notice["category"].stringOr("General"), 10.5f, green, true).apply {
-            setPadding(0, dp(5), 0, 0)
-        })
-        card.addView(info, LinearLayout.LayoutParams(0, -2, 1f))
-        card.setOnClickListener { showNoticeDetail(notice) }
-        return card
-    }
-
-    private fun activityFeatureCard(activity: Map<String, Any?>): View {
-        val category = activity["category"].stringOr("Community")
-        val card = panel()
-        card.setPadding(0, 0, 0, 0)
-        card.clipToOutline = true
-        val media = FrameLayout(this).apply {
-            background = rounded(activityTint(category), 17)
-            clipToOutline = true
-        }
-        val fallback = TextView(this).apply {
-            text = activityIcon(category)
-            textSize = 38f
-            gravity = Gravity.CENTER
-            setTextColor(navy)
-        }
-        media.addView(fallback, FrameLayout.LayoutParams(-1, -1))
-        val imageUrl = activity["imageUrl"].stringOr("")
-        if (imageUrl.startsWith("https://", true)) {
-            val image = ImageView(this).apply {
-                scaleType = ImageView.ScaleType.CENTER_CROP
-                background = rounded(activityTint(category), 17)
-                visibility = View.INVISIBLE
-                tag = imageUrl
-            }
-            media.addView(image, FrameLayout.LayoutParams(-1, -1))
-            loadActivityImage(image, imageUrl)
-        }
-        card.addView(media, LinearLayout.LayoutParams(-1, dp(112)))
-        val details = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), dp(11), dp(12), dp(13))
-        }
-        details.addView(text(category, 9.5f, green, true).apply {
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-        })
-        details.addView(text(activity["title"].stringOr("Activity"), 13.5f, navy, true).apply {
-            maxLines = 2
-            ellipsize = android.text.TextUtils.TruncateAt.END
-            setPadding(0, dp(4), 0, dp(4))
-        })
-        details.addView(text(activity["description"].stringOr(""), 11f, muted).apply {
-            maxLines = 3
-            ellipsize = android.text.TextUtils.TruncateAt.END
-        })
-        details.addView(text("View activity  ›", 10.5f, saffron, true).apply {
-            setPadding(0, dp(8), 0, 0)
-        })
-        card.addView(details)
-        card.setOnClickListener { showActivityDetail(activity) }
-        return card
-    }
-
-    private fun loadActivityImage(target: ImageView, imageUrl: String) {
-        imageLoader.execute {
-            val bitmap = runCatching {
-                val connection = URL(imageUrl).openConnection()
-                connection.connectTimeout = 4500
-                connection.readTimeout = 5500
-                connection.getInputStream().use { BitmapFactory.decodeStream(it) }
-            }.getOrNull()
-            if (bitmap != null) {
-                runOnUiThread {
-                    if (!isFinishing && target.tag == imageUrl) {
-                        target.setImageBitmap(bitmap)
-                        target.visibility = View.VISIBLE
-                    }
-                }
-            }
-        }
-    }
-
-    private fun activityIcon(category: String): String {
-        val value = category.lowercase(Locale.ROOT)
-        return when {
-            value.contains("education") || value.contains("student") -> "📘"
-            value.contains("environment") || value.contains("clean") || value.contains("green") -> "🌱"
-            value.contains("health") || value.contains("welfare") -> "❤"
-            value.contains("empower") || value.contains("community") -> "🤝"
-            value.contains("volunteer") -> "🧡"
-            else -> "🌿"
-        }
-    }
-
-    private fun activityTint(category: String): Int {
-        val value = category.lowercase(Locale.ROOT)
-        return when {
-            value.contains("education") || value.contains("student") -> paleBlue
-            value.contains("environment") || value.contains("clean") || value.contains("green") -> paleGreen
-            value.contains("health") || value.contains("welfare") -> 0xFFFFE8EC.toInt()
-            value.contains("empower") || value.contains("community") -> 0xFFFFF0D8.toInt()
-            else -> 0xFFF0EAFE.toInt()
-        }
+        }, margin(-1, dp(48), 0, 0, 0, 0))
     }
 
     private fun sectionHeading(title: String, action: String, click: () -> Unit): LinearLayout =
