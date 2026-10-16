@@ -90,6 +90,7 @@ class MainActivity : AppCompatActivity() {
     private var questionTimer: CountDownTimer? = null
     private var quizRegistration: ListenerRegistration? = null
     private var questionRegistration: ListenerRegistration? = null
+    private var timingRegistration: ListenerRegistration? = null
     private val contentRegistrations = mutableListOf<ListenerRegistration>()
     private var notices: List<Map<String, Any?>> = emptyList()
     private var events: List<Map<String, Any?>> = emptyList()
@@ -905,6 +906,11 @@ class MainActivity : AppCompatActivity() {
                     val done: () -> Unit = {
                         activeCode = code
                         activeQuiz = data
+                        questionRegistration?.remove()
+                        timingRegistration?.remove()
+                        currentQuestionIndex = -1
+                        activeQuestion = emptyMap()
+                        questionStartedMs = 0L
                         getPreferences(MODE_PRIVATE).edit()
                             .putString("last_quiz_code", code)
                             .putString("player_name", name)
@@ -941,6 +947,7 @@ class MainActivity : AppCompatActivity() {
     private fun listenQuiz(code: String) {
         quizRegistration?.remove()
         questionRegistration?.remove()
+        timingRegistration?.remove()
         quizRegistration = db.collection("quizzes").document(code).addSnapshotListener { snap, error ->
             if (error != null) {
                 if (currentPage != "quiz-live") toast("Quiz sync failed: " + (error.localizedMessage ?: "check connection"))
@@ -975,7 +982,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showWaiting(message: String) {
-        if (currentPage != "quiz-live") {
+        // Clear the old question and timer whenever the current question is not ready.
+        if (currentPage != "quiz-waiting") {
             renderPage("quiz-waiting")
             addPageHeading("Quiz & Competitions", "Stay on this screen while the live competition is controlled by the Admin.")
             val c = panel()
@@ -1010,6 +1018,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun listenQuestion(code: String, index: Int) {
         questionRegistration?.remove()
+        timingRegistration?.remove()
         questionRegistration = db.collection("quizzes").document(code).collection("questions").document(index.toString())
             .addSnapshotListener { snap, error ->
                 if (error != null) {
@@ -1021,10 +1030,27 @@ class MainActivity : AppCompatActivity() {
                     return@addSnapshotListener
                 }
                 activeQuestion = snap.data.orEmpty()
-                questionStartedMs = (activeQuiz["questionStartedAt"] as? Number)?.toLong() ?: System.currentTimeMillis()
+                questionStartedMs = (activeQuiz["questionStartedAt"] as? Number)?.toLong() ?: 0L
                 answeredCurrent = false
                 answerLocked = false
                 loadPreviousAnswerAndRender(index)
+                listenQuestionTiming(code, index)
+            }
+    }
+
+    private fun listenQuestionTiming(code: String, index: Int) {
+        timingRegistration?.remove()
+        timingRegistration = db.collection("quizzes").document(code)
+            .collection("questionTiming").document(index.toString())
+            .addSnapshotListener { snap, error ->
+                if (error != null || snap == null || !snap.exists()) return@addSnapshotListener
+                if (index != currentQuestionIndex || activeCode != code) return@addSnapshotListener
+                val timingRun = snap.getString("runId").orEmpty()
+                val activeRun = activeQuiz["runId"].stringOr("")
+                if (timingRun.isNotBlank() && activeRun.isNotBlank() && timingRun != activeRun) return@addSnapshotListener
+                val serverStartedAt = snap.getTimestamp("startedAt")?.toDate()?.time ?: return@addSnapshotListener
+                questionStartedMs = serverStartedAt
+                updateLiveTimer()
             }
     }
 
@@ -1211,7 +1237,9 @@ class MainActivity : AppCompatActivity() {
             timerTickScheduled = false
             return
         }
-        val started = (activeQuiz["questionStartedAt"] as? Number)?.toLong() ?: questionStartedMs
+        val started = questionStartedMs.takeIf { it > 0L }
+            ?: (activeQuiz["questionStartedAt"] as? Number)?.toLong()
+            ?: 0L
         val seconds = ((activeQuiz["settings"] as? Map<*, *>)?.get("questionSeconds") as? Number)?.toInt()
             ?: (activeQuiz["sec"] as? Number)?.toInt() ?: questionSeconds
         questionSeconds = seconds.coerceIn(5, 600)
@@ -1674,6 +1702,7 @@ class MainActivity : AppCompatActivity() {
         questionTimer?.cancel()
         quizRegistration?.remove()
         questionRegistration?.remove()
+        timingRegistration?.remove()
         contentRegistrations.forEach { it.remove() }
         imageLoader.shutdownNow()
     }
