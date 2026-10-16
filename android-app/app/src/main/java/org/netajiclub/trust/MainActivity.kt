@@ -825,20 +825,42 @@ class MainActivity : AppCompatActivity() {
         val user = auth.currentUser ?: return
         db.collection("quizzes").document(activeCode).collection("answers")
             .whereEqualTo("uid", user.uid).get().addOnSuccessListener { snap ->
-                var correct = 0
-                snap.documents.forEach { answer ->
-                    val qi = answer.getLong("q")?.toInt() ?: return@forEach
-                    val sel = answer.getLong("sel")?.toInt() ?: return@forEach
-                    // Keys can only be read for already-submitted answers; each read remains protected by Rules.
-                    db.collection("quizzes").document(activeCode).collection("keys").document(qi.toString()).get()
-                        .addOnSuccessListener { key ->
-                            if (key.exists() && (key.getLong("correctIndex")?.toInt() ?: -1) == sel) {
-                                correctCount = (correctCount + 1).coerceAtMost(snap.size())
-                                score = correctCount
-                            }
-                        }
+                val answerRows = snap.documents
+                if (answerRows.isEmpty()) {
+                    correctCount = 0
+                    score = 0
+                    return@addOnSuccessListener
                 }
-                correctCount = correct
+                var checked = 0
+                var right = 0
+                answerRows.forEach { answer ->
+                    val qi = answer.getLong("q")?.toInt()
+                    val sel = answer.getLong("sel")?.toInt()
+                    if (qi == null || sel == null) {
+                        checked++
+                        if (checked == answerRows.size) {
+                            correctCount = right
+                            score = right
+                        }
+                    } else {
+                        // Rules permit reading a key only after this player's answer exists.
+                        db.collection("quizzes").document(activeCode).collection("keys").document(qi.toString()).get()
+                            .addOnSuccessListener { key ->
+                                if (key.exists() && (key.getLong("correctIndex")?.toInt() ?: -1) == sel) right++
+                                checked++
+                                if (checked == answerRows.size) {
+                                    correctCount = right
+                                    score = right
+                                }
+                            }.addOnFailureListener {
+                                checked++
+                                if (checked == answerRows.size) {
+                                    correctCount = right
+                                    score = right
+                                }
+                            }
+                    }
+                }
             }
     }
 
