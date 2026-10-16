@@ -27,6 +27,10 @@ let answered = false;
 let questionShownAt = 0;
 let activeQuestionData = null;
 let questionListenerGeneration = 0;
+// A player who joins while Firestore still says "live" from an older run must
+// remain on Waiting. Only a fresh Admin runId/status transition may unlock questions.
+let firstQuizSnapshotSeen = false;
+let blockedStaleLiveRunId = "";
 let score = 0;
 let correctCount = 0;
 let selectedLanguage = localStorage.getItem("ncQuizLanguage") || "hi";
@@ -259,6 +263,44 @@ function startListening(code) {
     const previousStatus = quizState?.status || "";
     const previousRunId = String(quizState?.runId || "");
     const incomingRunId = String(incomingQuizState?.runId || "");
+
+    // On the first snapshot, never display a question from a run that was already
+    // live before this player joined. Wait until Admin publishes a new runId.
+    if (!firstQuizSnapshotSeen) {
+      firstQuizSnapshotSeen = true;
+      if (incomingQuizState.status === "live") {
+        blockedStaleLiveRunId = incomingRunId || "__missing_run_id__";
+        quizState = incomingQuizState;
+        refreshActiveBranding();
+        questionListenerGeneration++;
+        if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
+        currentIndex = -1;
+        activeQuestionData = null;
+        answered = false;
+        setExamLock(false);
+        waiting("Admin के नया Quiz शुरू करने का इंतज़ार है।");
+        return;
+      }
+    }
+    if (blockedStaleLiveRunId) {
+      if (incomingQuizState.status === "completed") {
+        blockedStaleLiveRunId = "";
+      } else if (incomingQuizState.status === "live" &&
+                 incomingRunId && incomingRunId !== blockedStaleLiveRunId) {
+        blockedStaleLiveRunId = "";
+      } else {
+        quizState = incomingQuizState;
+        refreshActiveBranding();
+        questionListenerGeneration++;
+        if (unsubQuestion) { unsubQuestion(); unsubQuestion = null; }
+        currentIndex = -1;
+        activeQuestionData = null;
+        answered = false;
+        setExamLock(false);
+        waiting("Admin के नया Quiz शुरू करने का इंतज़ार है।");
+        return;
+      }
+    }
 
     // Force a fresh question listener whenever a new live run starts. Without this,
     // a player can remain on the old waiting/question state if the admin restarts
