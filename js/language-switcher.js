@@ -39,7 +39,19 @@
     "Google से login करें। केवल rohit.fcg123@gmail.com और Root Admin द्वारा approved email IDs को access मिलेगा।":"Sign in with Google. Access is limited to rohit.fcg123@gmail.com and email IDs approved by the Root Admin.",
     "Email/password login बंद है। Additional Admin approval केवल Root Admin दे सकता है.":"Email/password login is disabled. Only the Root Admin can approve additional admins.",
     "Email/password login बंद है। Additional Admin approval केवल Root Admin दे सकता है।":"Email/password login is disabled. Only the Root Admin can approve additional admins.",
-    "Quiz में शामिल हों":"Join the Quiz","अपना नाम और Admin से मिला Quiz Code डालें। फिर Start Quiz दबाएँ।":"Enter your name and the Quiz Code from the admin, then press Start Quiz.",
+    "Quiz में शामिल हों":"Join the Quiz",
+    "Admin के Quiz शुरू करने का इंतज़ार है":"Waiting for the admin to start the quiz",
+    "Admin के Quiz शुरू करने का इंतज़ार है।":"Waiting for the admin to start the quiz",
+    "Quiz शुरू होने वाला है…":"The quiz is about to start…",
+    "क्विज़ शुरू होने वाला है…":"The quiz is about to start…",
+    "प्रश्न लोड हो रहा है…":"Loading question…",
+    "Quiz समाप्त हो गया। अब आप Logout कर सकते हैं।":"The quiz has ended. You can now log out.",
+    "Quiz चल रहा है। Quiz समाप्त होने तक इसी पेज पर रहें। Refresh करने पर भी आपका Quiz यहीं खुलेगा।":"The quiz is in progress. Stay on this page until it ends. Your quiz will reopen here if you refresh.",
+    "Quiz शुरू हो चुका है। Quiz समाप्त होने तक Logout नहीं कर सकते।":"The quiz has started. You cannot log out until it ends.",
+    "Exam चल रहा है":"Quiz in progress",
+    "Correct answers / सही जवाब:":"Correct answers:",
+    "प्रश्नों की भाषा / Question Language":"Question Language",
+    "अभी Login नहीं हुआ है। Continue with Google दबाएँ।":"You are not logged in. Press Continue with Google.","अपना नाम और Admin से मिला Quiz Code डालें। फिर Start Quiz दबाएँ।":"Enter your name and the Quiz Code from the admin, then press Start Quiz.",
     "प्रश्नों की भाषा / Question Language":"Question Language","आपका नाम":"Your Name","Admin से Quiz Code लें। Start Quiz दबाने के बाद Waiting स्क्रीन खुलेगी।":"Get the Quiz Code from the admin. After you press Start Quiz, the waiting screen will open.",
     "Login verify नहीं हो पाया। Internet connection जाँचें और फिर कोशिश करें।":"Login verification failed. Check your internet connection and try again.",
     "अभी Login नहीं हुआ है। Continue with Google दबाएँ।":"You are not logged in. Press Continue with Google.",
@@ -109,7 +121,7 @@
     wrap.id="ncUiLanguageSwitcher";
     wrap.innerHTML='<span aria-hidden="true">🌐</span><span class="nc-language-label">Language</span><select aria-label="Website language"><option value="en">English</option><option value="hi">हिन्दी</option></select>';
     const style=document.createElement("style");
-    style.textContent='#ncUiLanguageSwitcher{display:inline-flex;align-items:center;gap:6px;z-index:9998;background:#fff8e8;color:#552d22;border:1px solid #cba76a;border-radius:12px;padding:6px 9px;font:600 13px/1.2 system-ui;box-shadow:0 2px 8px #0002;margin:8px 0}#ncUiLanguageSwitcher select{max-width:105px;border:0;background:transparent;color:inherit;font:inherit;outline-offset:2px}header.top #ncUiLanguageSwitcher{margin-left:auto;flex-shrink:0}#ncUiLanguageSwitcher .nc-language-label{white-space:nowrap}@media(max-width:480px){#ncUiLanguageSwitcher{gap:4px;padding:5px 6px;font-size:12px}#ncUiLanguageSwitcher .nc-language-label{display:none}header.top #ncUiLanguageSwitcher{order:10}}';
+    style.textContent='#ncUiLanguageSwitcher{display:inline-flex;align-items:center;gap:8px;z-index:9998;background:linear-gradient(135deg,#fff8e8,#ffe9b8);color:#552d22;border:1px solid #d7ad50;border-radius:999px;padding:7px 12px;font:600 13px/1.2 system-ui;box-shadow:0 3px 10px #0002;margin:8px 0;white-space:nowrap}#ncUiLanguageSwitcher>span:first-child{font-size:16px}#ncUiLanguageSwitcher select{appearance:none;-webkit-appearance:none;max-width:110px;border:0;border-radius:999px;background:#fffdf6;color:#552d22;padding:6px 24px 6px 10px;font:700 13px/1.2 system-ui;outline-offset:2px;box-shadow:inset 0 0 0 1px #e7d09a;background-image:linear-gradient(45deg,transparent 50%,#552d22 50%),linear-gradient(135deg,#552d22 50%,transparent 50%);background-position:calc(100% - 12px) 50%,calc(100% - 8px) 50%;background-size:4px 4px,4px 4px;background-repeat:no-repeat}#ncUiLanguageSwitcher select:focus-visible{outline:2px solid #a86b12}header.top #ncUiLanguageSwitcher{margin-left:auto;flex-shrink:0}#ncUiLanguageSwitcher .nc-language-label{white-space:nowrap}@media(max-width:480px){#ncUiLanguageSwitcher{gap:5px;padding:6px 8px;font-size:12px}#ncUiLanguageSwitcher select{max-width:98px;padding:6px 22px 6px 8px;font-size:12px}#ncUiLanguageSwitcher .nc-language-label{display:none}header.top #ncUiLanguageSwitcher{order:10}}';
     document.head.appendChild(style);
     const header=document.querySelector("header.top");
     if(header) header.appendChild(wrap); else document.body.prepend(wrap);
@@ -118,9 +130,20 @@
   }
   function init(){addSwitcher();translateElement();}
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",init,{once:true}); else init();
+  const translating = new WeakSet();
   const observer=new MutationObserver(records=>{
     for(const record of records) {
       if(record.type==="childList") record.addedNodes.forEach(node=>{if(node.nodeType===1 && node.id!=="ncUiLanguageSwitcher") translateElement(node); else if(node.nodeType===3) translateElement(node.parentElement);});
+      else if(record.type==="characterData") {
+        const node=record.target, parent=node.parentElement;
+        if(!parent || excluded(parent) || parent.closest("#ncUiLanguageSwitcher") || translating.has(node)) continue;
+        const displayed=node.nodeValue;
+        if(node.__ncLangLastApplied !== undefined && displayed === node.__ncLangLastApplied) continue;
+        node.__ncLangOriginal=displayed;
+        const next=translateText(displayed,language);
+        node.__ncLangLastApplied=next;
+        if(next!==displayed) { translating.add(node); node.nodeValue=next; queueMicrotask(()=>translating.delete(node)); }
+      }
     }
   });
   observer.observe(document.documentElement,{subtree:true,childList:true,characterData:true});
