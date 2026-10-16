@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#fff8e8"><title>Trust Content Admin | Netaji Club</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#203047;background:#fff8e8}
+*{box-sizing:border-box}body{margin:0}header{background:#102f5d;color:white;padding:18px clamp(16px,4vw,42px);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:21px;margin:0;flex:1}a{color:inherit}main{max-width:1000px;margin:20px auto;padding:0 16px 50px}
+.card{background:#fff;border:1px solid #e9e1d2;border-radius:18px;padding:18px;margin:0 0 16px;box-shadow:0 3px 16px #102f5d0a}
+h2{color:#102f5d;font-size:20px;margin:0 0 10px}h3{color:#102f5d;margin:0 0 12px}
+label{display:block;font-size:13px;font-weight:700;margin:12px 0 6px}
+input,textarea,select{display:block;width:100%;font:inherit;color:#203047;border:1px solid #d4dce6;border-radius:11px;padding:12px;background:#fff}textarea{min-height:95px;resize:vertical}
+button{border:0;border-radius:12px;padding:12px 16px;font:700 14px system-ui;cursor:pointer;background:#102f5d;color:white}
+button.secondary{background:#fff1df;color:#102f5d;border:1px solid #e6d3ac}button.danger{background:#bd3044;padding:8px 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:14px}
+.notice{border-radius:12px;background:#eaf3ff;color:#102f5d;padding:12px;font-size:13px;margin:10px 0;white-space:pre-wrap}
+.entry{border:1px solid #e5e7eb;border-radius:13px;padding:12px;margin:10px 0;display:flex;gap:10px;align-items:flex-start}
+.entry .copy{flex:1;min-width:0}.entry strong{display:block;color:#102f5d}.entry p{margin:5px 0;font-size:13px;overflow-wrap:anywhere}
+.hidden{display:none!important}.bar{display:flex;gap:8px;flex-wrap:wrap}.bar button{flex:1}
+small{color:#64748b}@media(max-width:480px){header h1{font-size:18px}main{margin-top:12px}.card{padding:14px}}
+</style></head>
+<body>
+<header><div style="font-size:26px">🟠</div><h1>Netaji Social & Welfare Trust — Content Admin</h1><a href="admin.html">Competition Admin</a></header>
+<main>
+<section id="loginCard" class="card"><h2>Admin Login</h2><p>Sign in with the same approved Google Admin account used by the current Netaji Club website.</p><button id="loginBtn">Continue with Google</button><p id="authStatus" class="notice">Checking admin session…</p></section>
+<div id="adminContent" class="hidden">
+<section class="card"><h2>Publish Trust Notices, Events and Activities</h2><p>These updates appear in the native Android app without a new APK. The existing quiz and contest controls remain separate and unchanged.</p><p id="writeStatus" class="notice">Connected to the existing Firebase project.</p></section>
+<div class="grid">
+<section class="card"><h3>New Notice</h3><form id="noticeForm">
+<label>Title *</label><input id="noticeTitle" required maxlength="140">
+<label>Message *</label><textarea id="noticeBody" required maxlength="4000"></textarea>
+<label>Category</label><select id="noticeCategory"><option>General</option><option>Education</option><option>Health</option><option>Environment</option><option>Social Welfare</option><option>Volunteer</option></select>
+<label><input id="noticePinned" type="checkbox" style="display:inline;width:auto"> Pin this notice on Home</label>
+<button type="submit">Publish Notice</button></form></section>
+<section class="card"><h3>New Event</h3><form id="eventForm">
+<label>Event title *</label><input id="eventTitle" required maxlength="140">
+<label>Description *</label><textarea id="eventDescription" required maxlength="4000"></textarea>
+<label>Date / time</label><input id="eventDate" placeholder="e.g. 20 Oct 2026, 5:00 PM">
+<label>Location</label><input id="eventLocation" maxlength="250">
+<label>Category</label><select id="eventCategory"><option>General</option><option>Education</option><option>Health</option><option>Environment</option><option>Social Welfare</option></select>
+<button type="submit">Publish Event</button></form></section>
+<section class="card"><h3>New Activity</h3><form id="activityForm">
+<label>Activity title *</label><input id="activityTitle" required maxlength="140">
+<label>Description *</label><textarea id="activityDescription" required maxlength="4000"></textarea>
+<label>Category</label><select id="activityCategory"><option>Education Support</option><option>Environment Drive</option><option>Health & Welfare</option><option>Community Empowerment</option><option>Volunteer</option></select>
+<label>Image URL (optional HTTPS)</label><input id="activityImage" type="url" placeholder="https://…">
+<button type="submit">Publish Activity</button></form></section>
+<section class="card"><h3>Trust Contact & About</h3><form id="contactForm">
+<label>About the Trust</label><textarea id="contactAbout"></textarea>
+<label>Mission</label><textarea id="contactMission"></textarea>
+<label>Phone</label><input id="contactPhone" type="tel">
+<label>Email</label><input id="contactEmail" type="email">
+<label>Address</label><textarea id="contactAddress"></textarea>
+<label>Donation UPI ID (optional)</label><input id="contactUpi" placeholder="Only use a verified Trust UPI ID">
+<button type="submit">Save Trust Details</button></form></section>
+</div>
+<section class="card"><h2>Published Notices</h2><div id="noticeList"></div></section>
+<section class="card"><h2>Published Events</h2><div id="eventList"></div></section>
+<section class="card"><h2>Published Activities</h2><div id="activityList"></div></section>
+<div class="bar"><button id="logoutBtn" class="secondary">Log out</button><a href="admin.html" style="display:flex;align-items:center;color:#102f5d">Back to Competition Admin</a></div>
+</div></main>
+<script type="module" src="js/trust-admin.js?v=20261016-trust-admin-1"></script>
+</body></html>
