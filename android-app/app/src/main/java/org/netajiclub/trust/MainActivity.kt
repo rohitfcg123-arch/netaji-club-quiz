@@ -191,9 +191,9 @@ class MainActivity : AppCompatActivity() {
             contentDescription = "Netaji Social and Welfare Trust official logo"
         }, LinearLayout.LayoutParams(dp(56), dp(56)))
         val brand = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        brand.addView(text("Netaji Social & Welfare Trust", 16f, navy, true).apply {
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
+        brand.addView(text("Netaji Social &\nWelfare Trust", 16f, navy, true).apply {
+            maxLines = 2
+            setLineSpacing(0f, 0.98f)
         })
         header.addView(brand, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(10) })
 
@@ -447,9 +447,6 @@ class MainActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(17), dp(18), 0, dp(14))
         }
-        copy.addView(text("NETAJI SOCIAL & WELFARE TRUST", 8.5f, saffron, true).apply {
-            maxLines = 1
-        })
         copy.addView(text("Serving our\ncommunity,\ntogether", 24f, navy, true).apply {
             setLineSpacing(dp(1).toFloat(), 1f)
             setPadding(0, dp(5), 0, dp(8))
