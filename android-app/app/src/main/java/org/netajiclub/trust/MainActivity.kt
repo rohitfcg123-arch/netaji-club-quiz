@@ -416,7 +416,7 @@ class MainActivity : AppCompatActivity() {
                 .map { it.toMapWithId() }
                 .filter { it["status"] == null || it["status"].toString() == "published" }
                 .sortedBy { publishedMillis(it["eventAt"] ?: it["publishedAt"]) }
-            if (currentPage == "home") showHome()
+            if (currentPage == "home") showHome() else if (currentPage == "events") showEvents()
         }
         contentRegistrations += db.collection("trustActivities").addSnapshotListener { snapshot, error ->
             if (error != null) return@addSnapshotListener
@@ -1675,6 +1675,7 @@ class MainActivity : AppCompatActivity() {
         quizRegistration?.remove()
         questionRegistration?.remove()
         contentRegistrations.forEach { it.remove() }
+        imageLoader.shutdownNow()
     }
 }
 
